@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Store;
+use App\Models\StoreSubscriptionInquiry;
 use App\Models\StoreSubscription;
 use App\Support\StoreNotificationRecorder;
 use App\Support\StoreSubscriptionPeriod;
@@ -19,6 +20,78 @@ use Illuminate\Support\Str;
 
 class StoreSubscriptionRazorpayController extends Controller
 {
+    /**
+     * Best-effort: logs a "needs fulfillment/help" inquiry for super admin.
+     *
+     * @param  array{payment_gateway: bool, qr_code: bool, payment_gateway_help: bool}  $addonsPayload
+     */
+    private function recordSubscriptionInquiry(
+        Request $request,
+        Store $store,
+        SubscriptionPlan $plan,
+        array $addonsPayload,
+        int $amountPaise,
+        string $currency,
+        ?string $orderId,
+        ?string $paymentId,
+        string $status,
+        ?int $subscriptionId
+    ): void {
+        try {
+            if (! Schema::hasTable('store_subscription_inquiries')) {
+                return;
+            }
+
+            $owner = $request->user();
+            $storeOwner = [
+                'user_id' => $owner?->id,
+                'name' => $owner?->name ?? null,
+                'mobile' => $owner?->phone ?? ($store->phone ?? null),
+                'email' => $owner?->email ?? ($store->email ?? null),
+                'location' => $store->location ?? null,
+            ];
+
+            $storeSnap = [
+                'store_id' => (int) $store->id,
+                'name' => $store->name ?? null,
+                'username' => $store->username ?? null,
+                'location' => $store->location ?? null,
+                'state' => $store->state ?? null,
+                'district' => $store->district ?? null,
+                'phone' => $store->phone ?? null,
+                'email' => $store->email ?? null,
+            ];
+
+            $payload = [
+                'store_id' => $store->id,
+                'store_subscription_id' => $subscriptionId,
+                'subscription_plan_id' => $plan->id,
+                'amount_paise' => max(0, $amountPaise),
+                'currency' => $currency !== '' ? $currency : 'INR',
+                'razorpay_order_id' => $orderId,
+                'razorpay_payment_id' => $paymentId,
+                'status' => $status,
+                'addons' => $addonsPayload,
+                'store_owner' => $storeOwner,
+                'store_snapshot' => $storeSnap,
+            ];
+
+            if (is_string($orderId) && $orderId !== '') {
+                $existing = StoreSubscriptionInquiry::query()
+                    ->where('razorpay_order_id', $orderId)
+                    ->first();
+                if ($existing) {
+                    $existing->update($payload);
+                    return;
+                }
+            }
+
+            StoreSubscriptionInquiry::query()->create($payload);
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
     private function markStoreVerifiedForPaidPlan(Store $store, SubscriptionPlan $plan): void
     {
         try {
@@ -141,6 +214,20 @@ class StoreSubscriptionRazorpayController extends Controller
         }
 
         $order = $response->json();
+
+        // Record inquiry early so super admin can see selections even before payment verification.
+        $this->recordSubscriptionInquiry(
+            $request,
+            $store,
+            $plan,
+            $addonsPayload,
+            $amountPaise,
+            'INR',
+            isset($order['id']) ? (string) $order['id'] : null,
+            null,
+            'created',
+            null
+        );
 
         return $this->successResponse('Razorpay order created.', [
             'key_id' => $keyId,
@@ -307,6 +394,19 @@ class StoreSubscriptionRazorpayController extends Controller
 
         $subscription->load('plan');
 
+        $this->recordSubscriptionInquiry(
+            $request,
+            $store,
+            $plan,
+            $addonsPayload,
+            $expectedPaise,
+            'INR',
+            $orderId,
+            $paymentId,
+            'activated',
+            (int) $subscription->id
+        );
+
         StoreNotificationRecorder::subscriptionActivated($store, $subscription);
 
         return $this->successResponse('Subscription activated successfully.', $subscription, 201);
@@ -423,6 +523,20 @@ class StoreSubscriptionRazorpayController extends Controller
         });
 
         $subscription->load('plan');
+
+        // Mock flow: still record inquiry for admin visibility.
+        $this->recordSubscriptionInquiry(
+            $request,
+            $store,
+            $plan,
+            $addonsPayload,
+            0,
+            'INR',
+            $orderId,
+            $paymentId,
+            'activated',
+            (int) $subscription->id
+        );
 
         StoreNotificationRecorder::subscriptionActivated($store, $subscription);
 

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, CreditCard, Zap, Star, ShoppingBag, LogOut, Palette, Loader2, Store, Grid, Layout } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Zap, Star, ShoppingBag, LogOut, Palette, Loader2, Store, Grid, Layout, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/src/context/AuthContext';
 
 const adminMenuItems = [
@@ -13,6 +13,7 @@ const adminMenuItems = [
   { href: '/admin/categories', icon: Grid, label: 'Categories' },
   { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/plans', icon: CreditCard, label: 'Plans' },
+  { href: '/admin/subscription-inquiries', icon: ClipboardList, label: 'Subscription Inquiries' },
   { href: '/admin/boosts', icon: Zap, label: 'Boosts' },
   { href: '/admin/reviews', icon: Star, label: 'Reviews' },
 ];

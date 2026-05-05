@@ -38,6 +38,14 @@ class StorePaymentIntegrationController extends Controller
 
         $full = public_path($path);
         if (! is_file($full)) {
+            try {
+                if (Storage::disk('public')->exists($path)) {
+                    $full = Storage::disk('public')->path($path);
+                }
+            } catch (\Throwable) {
+            }
+        }
+        if (! is_file($full)) {
             abort(404);
         }
 
@@ -112,11 +120,30 @@ class StorePaymentIntegrationController extends Controller
             return null;
         }
 
-        if (! $this->storeHasPaymentAddonSelection($store) || ! $this->hasActivePaidSubscription($store)) {
+        if (! $this->storeHasPaymentAddonSelection($store)) {
             return $this->errorResponse(
-                'Payment settings unlock after you activate a paid subscription and enable payment add-ons.',
+                'Payment settings unlock after you enable payment add-ons.',
                 403
             );
+        }
+
+        // Allow merchants to upload their QR as soon as they enable the QR add-on (even before the paid period starts),
+        // so checkout can include the QR without forcing a second visit to the payment hub.
+        if (! $this->hasActivePaidSubscription($store)) {
+            $onlyQr =
+                ($request->hasFile('payment_qr')
+                    || (is_string($request->input('payment_qr_base64')) && trim((string) $request->input('payment_qr_base64')) !== '')
+                    || $request->boolean('remove_payment_qr'))
+                && ! $request->exists('razorpay_key_id')
+                && ! $request->exists('razorpay_key_secret')
+                && ! $request->boolean('clear_razorpay_secret');
+
+            if (! $onlyQr) {
+                return $this->errorResponse(
+                    'Payment settings unlock after you activate a paid subscription and enable payment add-ons.',
+                    403
+                );
+            }
         }
 
         return null;
@@ -240,13 +267,22 @@ class StorePaymentIntegrationController extends Controller
 
             $dirRelative = PaymentQrUrl::PUBLIC_PREFIX.'/'.$store->id;
             $dirAbsolute = public_path($dirRelative);
-            if (! is_dir($dirAbsolute) && ! @mkdir($dirAbsolute, 0755, true) && ! is_dir($dirAbsolute)) {
-                return $this->errorResponse('Could not create upload directory on the server.', 500);
-            }
-
             $basename = Str::uuid()->toString().'.'.$ext;
-            $file->move($dirAbsolute, $basename);
-            $store->payment_qr_path = $dirRelative.'/'.$basename;
+            $relativePath = $dirRelative.'/'.$basename;
+
+            // Prefer writing under `public/` (for platforms that can serve it directly), but fall back to
+            // `storage/app/public` when the host locks `public/` permissions.
+            if (is_dir($dirAbsolute) || (@mkdir($dirAbsolute, 0755, true) && is_dir($dirAbsolute))) {
+                $file->move($dirAbsolute, $basename);
+                $store->payment_qr_path = $relativePath;
+            } else {
+                try {
+                    Storage::disk('public')->putFileAs($dirRelative, $file, $basename);
+                    $store->payment_qr_path = $relativePath;
+                } catch (\Throwable) {
+                    return $this->errorResponse('Could not create upload directory on the server.', 500);
+                }
+            }
         } elseif (is_string($request->input('payment_qr_base64')) && trim($request->input('payment_qr_base64')) !== '') {
             if (! $allowQr) {
                 return $this->errorResponse('QR code add-on is not enabled for this store.', 403);
@@ -292,17 +328,26 @@ class StorePaymentIntegrationController extends Controller
 
             $dirRelative = PaymentQrUrl::PUBLIC_PREFIX.'/'.$store->id;
             $dirAbsolute = public_path($dirRelative);
-            if (! is_dir($dirAbsolute) && ! @mkdir($dirAbsolute, 0755, true) && ! is_dir($dirAbsolute)) {
-                return $this->errorResponse('Could not create upload directory on the server.', 500);
-            }
-
             $basename = Str::uuid()->toString().'.'.$ext;
-            $written = @file_put_contents($dirAbsolute.DIRECTORY_SEPARATOR.$basename, $binary);
-            if ($written === false) {
-                return $this->errorResponse('Could not write QR image to disk. Check `public/` permissions.', 500);
-            }
+            $relativePath = $dirRelative.'/'.$basename;
 
-            $store->payment_qr_path = $dirRelative.'/'.$basename;
+            if (is_dir($dirAbsolute) || (@mkdir($dirAbsolute, 0755, true) && is_dir($dirAbsolute))) {
+                $written = @file_put_contents($dirAbsolute.DIRECTORY_SEPARATOR.$basename, $binary);
+                if ($written === false) {
+                    return $this->errorResponse('Could not write QR image to disk. Check `public/` permissions.', 500);
+                }
+                $store->payment_qr_path = $relativePath;
+            } else {
+                try {
+                    $ok = Storage::disk('public')->put($relativePath, $binary, 'public');
+                    if (! $ok) {
+                        return $this->errorResponse('Could not write QR image to disk. Check storage permissions.', 500);
+                    }
+                    $store->payment_qr_path = $relativePath;
+                } catch (\Throwable) {
+                    return $this->errorResponse('Could not create upload directory on the server.', 500);
+                }
+            }
         }
 
         if ($request->boolean('clear_razorpay_secret')) {

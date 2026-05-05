@@ -26,6 +26,7 @@ import {
   isApiError,
   getSubscriptionAddonPrices,
   saveStoreSubscriptionAddons,
+  updateStorePaymentIntegration,
   createStoreSubscriptionRazorpayOrder,
   verifyStoreSubscriptionRazorpayPayment,
   completeStoreSubscriptionMockPayment,
@@ -123,11 +124,8 @@ const sumSelectedAddonRupees = (
   pricing: SubscriptionCheckoutPricing | null
 ): number => {
   if (!pricing) return 0;
-  return (
-    (addons.paymentGateway ? pricing.payment_gateway_integration_inr : 0) +
-    (addons.qrCode ? pricing.qr_code_inr : 0) +
-    (addons.paymentGatewayHelp ? pricing.payment_gateway_help_inr : 0)
-  );
+  // Only QR code impacts payable amount. Other toggles are inquiry-only.
+  return addons.qrCode ? pricing.qr_code_inr : 0;
 };
 
 /** Same math as the confirm modal and Laravel `StoreSubscriptionRazorpayController::createOrder`. */
@@ -210,14 +208,8 @@ const addonInvoiceRows = (
 ): { label: string; amount: number }[] => {
   if (!pricing) return [];
   const rows: { label: string; amount: number }[] = [];
-  if (addons.paymentGateway && pricing.payment_gateway_integration_inr > 0) {
-    rows.push({ label: 'Payment gateway integration', amount: pricing.payment_gateway_integration_inr });
-  }
   if (addons.qrCode && pricing.qr_code_inr > 0) {
     rows.push({ label: 'QR code', amount: pricing.qr_code_inr });
-  }
-  if (addons.paymentGatewayHelp && pricing.payment_gateway_help_inr > 0) {
-    rows.push({ label: 'Payment gateway — company help', amount: pricing.payment_gateway_help_inr });
   }
   return rows;
 };
@@ -488,32 +480,39 @@ function AddonToggleRow({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2 px-0 py-1">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center text-slate-700">
+    <div className="flex items-center justify-between gap-3 px-0 py-1.5">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center text-slate-700">
         <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[12px] font-semibold leading-tight text-slate-900">{title}</p>
+          <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-slate-500">{hint}</p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1 pr-1">
-        <p className="truncate text-[12px] font-semibold leading-tight text-slate-900">{title}</p>
-        {priceInr > 0 && (
-          <p className="mt-0.5 text-[12px] font-semibold leading-tight text-primary">+ ₹{formatInr(priceInr)}</p>
-        )}
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={onToggle}
-        className={`relative h-6 w-10 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 ${
-          checked ? 'bg-primary' : 'bg-slate-300'
-        }`}
-      >
-        <span
-          className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-md transition-transform duration-200 ease-out ${
-            checked ? 'translate-x-4' : 'translate-x-0'
+      <div className="flex shrink-0 items-center gap-2">
+        {priceInr > 0 ? (
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+            +₹{formatInr(priceInr)}
+          </span>
+        ) : null}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          disabled={disabled}
+          onClick={onToggle}
+          className={`relative h-6 w-10 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 ${
+            checked ? 'bg-primary' : 'bg-slate-300'
           }`}
-        />
-      </button>
+        >
+          <span
+            className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-md transition-transform duration-200 ease-out ${
+              checked ? 'translate-x-4' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
@@ -572,12 +571,16 @@ export default function SubscriptionPage() {
   });
   /** After live load of `subscription_addons` from API; toggles disabled until true to avoid races. */
   const [addonHydrated, setAddonHydrated] = useState(false);
-  /** Paid checkout: prompt to enable payment gateway if user skipped it on the card. */
-  const [paymentGatewaySuggestOpen, setPaymentGatewaySuggestOpen] = useState(false);
-  const [paymentGatewaySuggestAction, setPaymentGatewaySuggestAction] = useState<'razorpay' | 'mock'>('razorpay');
+  const [qrUploadOpen, setQrUploadOpen] = useState(false);
+  const [qrUploadPlanId, setQrUploadPlanId] = useState<string | null>(null);
+  const [qrUploadBase64, setQrUploadBase64] = useState<string | null>(null);
+  const [qrUploadMime, setQrUploadMime] = useState<string | null>(null);
+  const [qrUploadPreviewUrl, setQrUploadPreviewUrl] = useState<string | null>(null);
+  const [qrUploadError, setQrUploadError] = useState<string | null>(null);
+  const [qrUploading, setQrUploading] = useState(false);
+  const [qrUploadToast, setQrUploadToast] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const closeModalButtonRef = useRef<HTMLButtonElement>(null);
-  const paymentGatewayPromptCloseRef = useRef<HTMLButtonElement>(null);
   /** Prevents Mock + Razorpay flows from running together if clicks fire close together. */
   const subscriptionCheckoutLockRef = useRef(false);
   const [invoiceStoreSnapshot, setInvoiceStoreSnapshot] = useState<InvoiceStoreSnapshot | null>(null);
@@ -594,6 +597,16 @@ export default function SubscriptionPage() {
 
   const closeCheckoutConfirm = () => setCheckoutConfirmOpen(false);
 
+  const closeQrUpload = () => {
+    setQrUploadOpen(false);
+    setQrUploadPlanId(null);
+    setQrUploadBase64(null);
+    setQrUploadMime(null);
+    setQrUploadPreviewUrl(null);
+    setQrUploadError(null);
+    setQrUploading(false);
+  };
+
   const handlePlanCardKeyDown = (e: KeyboardEvent, plan: SubscriptionPlan) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -604,6 +617,12 @@ export default function SubscriptionPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!qrUploadToast) return;
+    const t = window.setTimeout(() => setQrUploadToast(null), 2800);
+    return () => window.clearTimeout(t);
+  }, [qrUploadToast]);
 
   useEffect(() => {
     if (!selectedPlan) return;
@@ -631,23 +650,12 @@ export default function SubscriptionPage() {
           setCheckoutConfirmOpen(false);
           return;
         }
-        if (paymentGatewaySuggestOpen) {
-          setPaymentGatewaySuggestOpen(false);
-          setCheckoutConfirmOpen(true);
-        } else {
-          setCheckoutPlan(null);
-        }
+        setCheckoutPlan(null);
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [checkoutPlan, paymentGatewaySuggestOpen, checkoutConfirmOpen]);
-
-  useEffect(() => {
-    if (!paymentGatewaySuggestOpen) return;
-    const t = window.setTimeout(() => paymentGatewayPromptCloseRef.current?.focus(), 0);
-    return () => window.clearTimeout(t);
-  }, [paymentGatewaySuggestOpen]);
+  }, [checkoutPlan, checkoutConfirmOpen]);
 
   useEffect(() => {
     if (!paymentSuccessInvoice) return;
@@ -921,7 +929,6 @@ export default function SubscriptionPage() {
     if (!plan || !storeId) return;
     if (subscriptionCheckoutLockRef.current) return;
     subscriptionCheckoutLockRef.current = true;
-    setPaymentGatewaySuggestOpen(false);
     const addons = checkoutAddonPayload(plan.id);
     setActivatingPlanId(plan.id);
     setActivationError(null);
@@ -988,7 +995,6 @@ export default function SubscriptionPage() {
                 });
                 setActiveSubscription(subscription);
                 setSubscriptionNotice(null);
-                setPaymentGatewaySuggestOpen(false);
                 setCheckoutPlan(null);
                 dispatchStoreProfileRefresh();
                 showPaidSubscriptionSuccess(subscription, plan, addons, 'razorpay', {
@@ -1047,7 +1053,6 @@ export default function SubscriptionPage() {
     if (!plan || !storeId) return;
     if (subscriptionCheckoutLockRef.current) return;
     subscriptionCheckoutLockRef.current = true;
-    setPaymentGatewaySuggestOpen(false);
     const addons = checkoutAddonPayload(plan.id);
     setActivatingPlanId(plan.id);
     setActivationError(null);
@@ -1060,7 +1065,6 @@ export default function SubscriptionPage() {
       });
       setActiveSubscription(subscription);
       setSubscriptionNotice(null);
-      setPaymentGatewaySuggestOpen(false);
       setCheckoutPlan(null);
       showPaidSubscriptionSuccess(subscription, plan, addons, 'mock');
     } catch (err) {
@@ -1111,6 +1115,12 @@ export default function SubscriptionPage() {
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Subscription</h1>
       </div>
+
+      {qrUploadToast && (
+        <div className="fixed bottom-5 right-5 z-[140] rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-900 shadow-lg">
+          {qrUploadToast}
+        </div>
+      )}
 
       {successMessage && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 font-medium">
@@ -1347,9 +1357,7 @@ export default function SubscriptionPage() {
           const cardAddons = addonsByPlanId[plan.id] ?? hydratedStoreAddons;
           const cardAddonSum =
             addonPrices != null
-              ? (cardAddons.paymentGateway ? addonPrices.payment_gateway_integration_inr : 0) +
-                (cardAddons.qrCode ? addonPrices.qr_code_inr : 0) +
-                (cardAddons.paymentGatewayHelp ? addonPrices.payment_gateway_help_inr : 0)
+              ? (cardAddons.qrCode ? addonPrices.qr_code_inr : 0)
               : 0;
           const displayPrice = formatInr(Number(plan.price) + cardAddonSum);
 
@@ -1483,10 +1491,17 @@ export default function SubscriptionPage() {
                         priceInr={addonPrices?.qr_code_inr ?? 0}
                         checked={Boolean(cardAddons.qrCode)}
                         onToggle={() =>
-                          setAddonsByPlanId((prev) => ({
-                            ...prev,
-                            [plan.id]: { ...cardAddons, qrCode: !cardAddons.qrCode },
-                          }))
+                          setAddonsByPlanId((prev) => {
+                            const next = !cardAddons.qrCode;
+                            if (next) {
+                              setQrUploadPlanId(plan.id);
+                              setQrUploadOpen(true);
+                            }
+                            return {
+                              ...prev,
+                              [plan.id]: { ...cardAddons, qrCode: next },
+                            };
+                          })
                         }
                         disabled={addonPricesLoading || !addonHydrated}
                       />
@@ -1550,25 +1565,6 @@ export default function SubscriptionPage() {
                     `Choose Plan • ₹${displayPrice}`
                   )}
                 </button>
-
-                {SUBSCRIPTION_MOCK_PAYMENT_UI && Number(plan.price) > 0 && plan.isActive ? (
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setCheckoutPlan(plan);
-                      setSubscriptionNotice(null);
-                      setActivationError(null);
-                      setSuccessMessage(null);
-                      setCheckoutConfirmOpen(true);
-                    }}
-                    disabled={isActivating || !storeId || addonPricesLoading || !addonHydrated}
-                    className="mt-2 flex w-full items-center justify-center rounded-xl border border-amber-300 bg-amber-50 py-2 text-[13px] font-semibold text-amber-950 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 md:rounded-lg md:py-2.5 md:text-sm"
-                    title="Test checkout: activates plan without Razorpay (when API mock payments are enabled)."
-                  >
-                    Mock order (test)
-                  </button>
-                ) : null}
               </div>
             </div>
           );
@@ -1694,26 +1690,6 @@ export default function SubscriptionPage() {
                   >
                     Close
                   </button>
-                  {SUBSCRIPTION_MOCK_PAYMENT_UI &&
-                    selectedPlan.isActive !== false &&
-                    storeId &&
-                    Number(selectedPlan.price) > 0 && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setCheckoutPlan(selectedPlan);
-                        setSubscriptionNotice(null);
-                        setActivationError(null);
-                        setSuccessMessage(null);
-                        setCheckoutConfirmOpen(true);
-                      }}
-                      disabled={activatingPlanId === selectedPlan.id || !addonHydrated || addonPricesLoading}
-                      className="w-full rounded-xl border border-amber-300 bg-amber-50 py-3 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-6"
-                      title="Test checkout: activates plan without Razorpay (when API mock payments are enabled)."
-                    >
-                      {activatingPlanId === selectedPlan.id ? 'Working…' : 'Mock order (test)'}
-                    </button>
-                  )}
                   {selectedPlan.isActive !== false && storeId && (
                     <button
                       type="button"
@@ -1796,9 +1772,7 @@ export default function SubscriptionPage() {
                   const addons = checkoutAddonPayload(checkoutPlan.id);
                   const addonSumLocal =
                     addonPrices != null
-                      ? (addons.paymentGateway ? addonPrices.payment_gateway_integration_inr : 0) +
-                        (addons.qrCode ? addonPrices.qr_code_inr : 0) +
-                        (addons.paymentGatewayHelp ? addonPrices.payment_gateway_help_inr : 0)
+                      ? (addons.qrCode ? addonPrices.qr_code_inr : 0)
                       : 0;
                   const base = Number(checkoutPlan.price) || 0;
                   const grossSubtotal = base + addonSumLocal;
@@ -1898,13 +1872,6 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     onClick={async () => {
-                      const addons = checkoutAddonPayload(checkoutPlan.id);
-                      if (!addons.paymentGateway) {
-                        setPaymentGatewaySuggestAction('razorpay');
-                        setPaymentGatewaySuggestOpen(true);
-                        setCheckoutConfirmOpen(false);
-                        return;
-                      }
                       closeCheckoutConfirm();
                       await proceedPaidPlanCheckout(checkoutPlan);
                     }}
@@ -1914,26 +1881,6 @@ export default function SubscriptionPage() {
                     Continue
                   </button>
                 </div>
-                {SUBSCRIPTION_MOCK_PAYMENT_UI ? (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const addons = checkoutAddonPayload(checkoutPlan.id);
-                      if (!addons.paymentGateway) {
-                        setPaymentGatewaySuggestAction('mock');
-                        setPaymentGatewaySuggestOpen(true);
-                        setCheckoutConfirmOpen(false);
-                        return;
-                      }
-                      closeCheckoutConfirm();
-                      await proceedMockPaidPlanCheckout(checkoutPlan);
-                    }}
-                    disabled={activatingPlanId === checkoutPlan.id || !storeId || addonPricesLoading || !addonHydrated}
-                    className="mt-2 w-full rounded-xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 py-2.5 text-[13px] font-semibold text-amber-950 shadow-sm transition hover:from-amber-100 hover:to-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Mock order (test)
-                  </button>
-                ) : null}
                 <p className="mt-2 text-center text-[11px] text-slate-500">
                   You’ll be redirected to Razorpay to complete payment.
                 </p>
@@ -1944,141 +1891,163 @@ export default function SubscriptionPage() {
         )}
 
       {mounted &&
-        paymentGatewaySuggestOpen &&
-        checkoutPlan &&
-        Number(checkoutPlan.price) > 0 &&
+        qrUploadOpen &&
         createPortal(
-          <div
-            className="fixed inset-0 z-[104] flex items-center justify-center p-4"
-            role="presentation"
-          >
+          <div className="fixed inset-0 z-[106] flex items-end justify-center sm:items-center sm:p-4" role="presentation">
             <button
               type="button"
-              className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
               aria-label="Close dialog"
-              onClick={() => {
-                setPaymentGatewaySuggestOpen(false);
-                setCheckoutConfirmOpen(true);
-              }}
+              onClick={closeQrUpload}
             />
             <div
               role="dialog"
               aria-modal="true"
-              aria-labelledby="pg-suggest-title"
-              aria-describedby="pg-suggest-desc"
-              className="relative z-10 w-full max-w-sm overflow-hidden rounded-xl border border-amber-200/90 bg-white shadow-2xl ring-1 ring-amber-900/10"
+              aria-labelledby="qr-upload-title"
+              className="relative z-10 w-[85%] max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-full sm:rounded-3xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-2 border-b border-amber-100 bg-amber-50/80 px-3 py-2.5">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                    <CreditCard className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-950">Payment gateway</p>
-                </div>
-                <button
-                  ref={paymentGatewayPromptCloseRef}
-                  type="button"
-                  onClick={() => {
-                    setPaymentGatewaySuggestOpen(false);
-                    setCheckoutConfirmOpen(true);
-                  }}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-200/80 bg-white text-slate-600 transition hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  aria-label="Close"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="px-3 py-3">
-                <h2 id="pg-suggest-title" className="text-sm font-bold text-slate-900">
-                  Add online payments?
-                </h2>
-                <p id="pg-suggest-desc" className="mt-1.5 text-[12px] leading-snug text-slate-600">
-                  You didn’t select payment gateway integration. We recommend it so buyers can pay you online.
-                </p>
-                <ul className="mt-2 space-y-0.5 pl-3 text-[11px] text-slate-700 marker:text-amber-600 list-disc">
-                  <li>Card/UPI payments go straight to your store checkout.</li>
-                  <li>Fewer abandoned orders than manual pay-and-share.</li>
-                </ul>
-                {(() => {
-                  const current = checkoutAddonPayload(checkoutPlan.id);
-                  const pgFee = addonPrices?.payment_gateway_integration_inr ?? 0;
-                  const addonSumLocal =
-                    addonPrices != null
-                      ? (current.paymentGateway ? addonPrices.payment_gateway_integration_inr : 0) +
-                        (current.qrCode ? addonPrices.qr_code_inr : 0) +
-                        (current.paymentGatewayHelp ? addonPrices.payment_gateway_help_inr : 0)
-                      : 0;
-                  const base = Number(checkoutPlan.price) || 0;
-                  const grossPg = base + addonSumLocal;
-                  const discPctPg = subscriptionBillingDiscountPercentForPlan(checkoutPlan, addonPrices, plans);
-                  const discPg =
-                    grossPg > 0 && discPctPg > 0 ? Math.round(grossPg * (discPctPg / 100)) : 0;
-                  const taxablePg = Math.max(0, grossPg - discPg);
-                  const gstPg = Math.round(taxablePg * (SUBSCRIPTION_CHECKOUT_GST_PERCENT / 100));
-                  const totalWithGstPg = taxablePg + gstPg;
-                  return (
-                    <p className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-1.5 text-[11px] text-slate-700">
-                      <span className="font-semibold text-slate-800">
-                        Total payable (incl. {SUBSCRIPTION_CHECKOUT_GST_PERCENT}% GST): ₹{formatInr(totalWithGstPg)}
-                      </span>
-                      {pgFee > 0 && !current.paymentGateway ? (
-                        <span className="block text-slate-600">
-                          Turn on gateway to add +₹{formatInr(pgFee)} (then continue to{' '}
-                          {paymentGatewaySuggestAction === 'mock' ? 'mock pay' : 'Razorpay'}).
-                        </span>
-                      ) : null}
-                      {current.paymentGateway && pgFee > 0 ? (
-                        <span className="block text-emerald-800">Gateway add-on included in total above.</span>
-                      ) : null}
+              <div className="border-b border-slate-100 bg-gradient-to-r from-violet-50 via-white to-indigo-50 px-4 py-4 sm:px-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      QR code upload
                     </p>
-                  );
-                })()}
-                {!addonHydrated && (
-                  <p className="mt-2 text-[11px] text-slate-500">Loading your saved selections…</p>
-                )}
+                    <h2 id="qr-upload-title" className="mt-1 truncate text-base font-bold text-slate-900 sm:text-xl">
+                      Upload your payment QR
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-600 sm:text-sm">
+                      This will be shown on your storefront for customers to scan and pay.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeQrUpload}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 border-t border-amber-100 bg-amber-50/30 px-3 py-2.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!checkoutPlan?.id) return;
-                    const current = checkoutAddonPayload(checkoutPlan.id);
-                    setAddonsByPlanId((prev) => ({
-                      ...prev,
-                      [checkoutPlan.id]: { ...current, paymentGateway: !current.paymentGateway },
-                    }));
-                  }}
-                  disabled={addonPricesLoading || !addonHydrated}
-                  className="w-full rounded-lg border border-amber-200 bg-white py-2 text-[12px] font-semibold text-amber-950 shadow-sm transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {(() => {
-                    const on = Boolean(checkoutAddonPayload(checkoutPlan.id).paymentGateway);
-                    return on ? 'Turn off' : 'Turn on';
-                  })()}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (paymentGatewaySuggestAction === 'mock') {
-                      void proceedMockPaidPlanCheckout(checkoutPlan);
-                    } else {
-                      void proceedPaidPlanCheckout(checkoutPlan);
-                    }
-                  }}
-                  disabled={activatingPlanId === checkoutPlan.id || !storeId || addonPricesLoading || !addonHydrated}
-                  className="w-full rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 py-2 text-[12px] font-semibold text-white shadow-md transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Next
-                </button>
+
+              <div className="max-h-[60vh] overflow-y-auto px-4 py-3 sm:max-h-[70vh] sm:px-6 sm:py-4">
+                {qrUploadError ? (
+                  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                    {qrUploadError}
+                  </div>
+                ) : null}
+
+                <label className="group block cursor-pointer">
+                  <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 transition group-hover:border-primary/40 group-hover:bg-primary/5 sm:p-5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-sm ring-1 ring-slate-200">
+                        <Download className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900">Choose an image</p>
+                        <p className="mt-0.5 text-xs text-slate-600">
+                          JPG / PNG / WebP • max 4 MB
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm">
+                        Browse
+                      </span>
+                    </div>
+
+                    {qrUploadPreviewUrl ? (
+                      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={qrUploadPreviewUrl}
+                          alt="QR preview"
+                          className="h-auto w-full max-h-44 object-contain sm:max-h-64"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setQrUploadError(null);
+                      if (file.size > 4 * 1024 * 1024) {
+                        setQrUploadError('QR image must be 4 MB or smaller.');
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const result = typeof reader.result === 'string' ? reader.result : '';
+                        const parts = result.split(',');
+                        const b64 = parts.length > 1 ? parts[1] : '';
+                        if (!b64) {
+                          setQrUploadError('Could not read this image. Please try another file.');
+                          return;
+                        }
+                        setQrUploadPreviewUrl(result);
+                        setQrUploadBase64(b64);
+                        setQrUploadMime(file.type || 'image/png');
+                      };
+                      reader.onerror = () => setQrUploadError('Could not read this image. Please try again.');
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
               </div>
-              <p className="px-3 pb-2.5 text-center text-[10px] text-slate-500">
-                You can leave it off and still continue — total updates if you turn it on.
-              </p>
+
+              <div className="border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={closeQrUpload}
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto sm:px-5"
+                  >
+                    Not now
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!storeId || !qrUploadBase64 || qrUploading}
+                    onClick={async () => {
+                      if (!storeId || !qrUploadBase64) {
+                        setQrUploadError('Please choose a QR image first.');
+                        return;
+                      }
+                      setQrUploading(true);
+                      setQrUploadError(null);
+                      try {
+                        // Backend requires `subscription_addons` selection before allowing QR save.
+                        // In this flow, user toggles the add-on before checkout, so persist it first.
+                        await saveStoreSubscriptionAddons(storeId, {
+                          ...checkoutAddonPayload(qrUploadPlanId),
+                          qrCode: true,
+                        });
+                        await updateStorePaymentIntegration(storeId, {
+                          payment_qr_base64: qrUploadBase64,
+                          payment_qr_mime: qrUploadMime ?? undefined,
+                        });
+                        setQrUploadToast('QR code saved.');
+                        closeQrUpload();
+                      } catch (e) {
+                        setQrUploadError(
+                          isApiError(e) ? e.message : 'Could not upload QR right now. Please try again.'
+                        );
+                      } finally {
+                        setQrUploading(false);
+                      }
+                    }}
+                    className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6"
+                  >
+                    {qrUploading ? 'Uploading…' : 'Save QR'}
+                  </button>
+                </div>
+                <p className="mt-2 text-center text-[11px] text-slate-500">
+                  Tip: You can change this later in Payment Integration settings too.
+                </p>
+              </div>
             </div>
           </div>,
           document.body

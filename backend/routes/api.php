@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminPlatformSettingController;
+use App\Http\Controllers\Api\AdminStoreSubscriptionInquiryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoostPlanController;
 use App\Http\Controllers\Api\CategoryController;
@@ -114,6 +115,9 @@ Route::middleware('auth:api')->group(function () {
     Route::get('subscriptions', [StoreSubscriptionController::class, 'index'])
         ->middleware('role:super_admin');
     Route::delete('subscriptions/{subscription}', [StoreSubscriptionController::class, 'cancel'])
+        ->middleware('role:super_admin');
+
+    Route::get('admin/subscription-inquiries', [AdminStoreSubscriptionInquiryController::class, 'index'])
         ->middleware('role:super_admin');
 
     Route::prefix('stores/{store}/boosts')->group(function () {

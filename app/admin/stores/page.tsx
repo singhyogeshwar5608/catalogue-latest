@@ -251,7 +251,7 @@ export default function AdminStoresPage() {
           <p className="text-gray-600">Manage all stores, subscriptions, and details</p>
         </div>
         <button
-          onClick={fetchStores}
+          onClick={() => void fetchStores()}
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           <RefreshCcw className="w-4 h-4" /> Refresh

@@ -146,10 +146,8 @@ final class SubscriptionCheckoutPricing
     {
         $base = (int) $plan->price;
         $charges = PlatformSetting::subscriptionAddonChargesPayload();
-        $addonSum =
-            ($addonsPayload['payment_gateway'] ? $charges['payment_gateway_integration_inr'] : 0)
-            + ($addonsPayload['qr_code'] ? $charges['qr_code_inr'] : 0)
-            + ($addonsPayload['payment_gateway_help'] ? $charges['payment_gateway_help_inr'] : 0);
+        // Only QR code is chargeable at checkout. Other toggles are tracked for fulfillment/inquiry only.
+        $addonSum = $addonsPayload['qr_code'] ? (int) ($charges['qr_code_inr'] ?? 0) : 0;
 
         return $base + $addonSum;
     }

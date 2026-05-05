@@ -59,7 +59,15 @@ final class PaymentQrUrl
         }
 
         $full = public_path($path);
-        if (! is_file($full)) {
+        $exists = is_file($full);
+        if (! $exists) {
+            try {
+                $exists = Storage::disk('public')->exists((string) $path);
+            } catch (\Throwable) {
+                $exists = false;
+            }
+        }
+        if (! $exists) {
             return null;
         }
 

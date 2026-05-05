@@ -2346,6 +2346,24 @@ export const updateAdminSubscriptionBillingDiscounts = async (
   return requireBillingDiscountsEnvelope(response);
 };
 
+export type AdminSubscriptionInquiryList = {
+  data: any[];
+  pagination: { current_page: number; last_page: number; per_page: number; total: number };
+};
+
+/** Super admin: view subscription purchase inquiries (addons + merchant details). */
+export const getAdminSubscriptionInquiries = async (
+  params?: { perPage?: number; page?: number }
+): Promise<AdminSubscriptionInquiryList> => {
+  const perPage = Math.max(1, Math.min(50, params?.perPage ?? 20));
+  const page = Math.max(1, params?.page ?? 1);
+  const response = await apiRequest<AdminSubscriptionInquiryList>(
+    `/admin/subscription-inquiries?per_page=${perPage}&page=${page}`,
+    { requiresAuth: true }
+  );
+  return response.data;
+};
+
 /** Authenticated store owner: read global subscription add-on prices and billing-term discount %. */
 export const getSubscriptionAddonPrices = async (): Promise<SubscriptionCheckoutPricing> => {
   const response = await apiRequest<SubscriptionCheckoutPricing>('/subscription-plans/addon-prices', {

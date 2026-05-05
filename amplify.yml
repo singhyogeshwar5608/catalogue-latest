@@ -1,0 +1,40 @@
+version: 1
+backend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: Access-Control-Allow-Origin
+          value: '*'
+        - key: Access-Control-Allow-Headers
+          value: 'Content-Type, Authorization, X-Requested-With'
+        - key: Access-Control-Allow-Methods
+          value: 'GET, POST, PUT, DELETE, OPTIONS'
+  rewrites:
+    - source: '/auth/google/callback'
+      target: '/auth/google/callback/index.html'
+      status: 200
+    - source: '/<*>'
+      target: '/index.html'
+      status: 200

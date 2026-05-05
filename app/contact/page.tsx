@@ -1,0 +1,263 @@
+'use client';
+
+import Link from 'next/link';
+import { Clock3, Facebook, Instagram, Linkedin, Mail, MapPin, Phone, Send, Youtube } from 'lucide-react';
+
+export default function ContactPage() {
+  return (
+    <div className="min-h-screen bg-[#f0f4ff]">
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(59,109,212,0.22),transparent_55%),radial-gradient(900px_circle_at_85%_10%,rgba(59,109,212,0.14),transparent_55%)]" />
+        <div className="mx-auto w-full max-w-7xl px-4 pb-6 pt-10 sm:px-6 sm:pb-10 sm:pt-12 lg:px-8">
+          <div className="grid items-center gap-10 lg:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3B6DD4]">Contact</p>
+              <h1 className="mt-3 text-4xl font-extrabold leading-tight tracking-[-0.04em] text-slate-950 sm:text-5xl">
+                Let&apos;s Talk
+                <span className="block bg-gradient-to-r from-[#3B6DD4] to-[#2F58B3] bg-clip-text text-transparent">
+                  We&apos;re Here to Help
+                </span>
+              </h1>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600 sm:text-base">
+                Reach out for onboarding help, billing questions, profile updates, marketplace support, or partnerships. Share
+                your details and we&apos;ll respond as soon as possible.
+              </p>
+
+              <div className="mt-7 flex flex-wrap gap-2">
+                {['Quick Response', 'Expert Support', 'Trusted Partner'].map((label) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/help-center"
+                  className="inline-flex items-center justify-center rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900"
+                >
+                  Open Help Center
+                </Link>
+                <a
+                  href="tel:7015150181"
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+                >
+                  Call: 7015150181
+                </a>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -right-10 -top-14 hidden h-44 w-44 rounded-full bg-[#3B6DD4]/10 blur-2xl lg:block" />
+              <div className="rounded-[12px] border border-slate-200 bg-white p-7 shadow-[0_18px_60px_-45px_rgba(15,23,42,0.45)]">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-12 w-12 place-items-center rounded-[12px] bg-[#3B6DD4] text-white shadow-sm">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Support mailbox</p>
+                    <p className="text-xs text-slate-600">Share your issue with context</p>
+                  </div>
+                </div>
+                <div className="mt-6 space-y-3 text-sm text-slate-700">
+                  <p>
+                    Email:{' '}
+                    <a className="font-semibold text-[#3B6DD4] hover:underline" href="mailto:support@cateloge.com">
+                      support@cateloge.com
+                    </a>
+                  </p>
+                  <p>
+                    Onboarding:{' '}
+                    <a className="font-semibold text-[#3B6DD4] hover:underline" href="mailto:onboarding@cateloge.com">
+                      onboarding@cateloge.com
+                    </a>
+                  </p>
+                  <p>
+                    Partnerships:{' '}
+                    <a className="font-semibold text-[#3B6DD4] hover:underline" href="mailto:growth@cateloge.com">
+                      growth@cateloge.com
+                    </a>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Tip: include store name/ID, screenshot (if any), and the exact step where it breaks.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+          <div className="rounded-[12px] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-slate-950">Send us a message</h2>
+            <p className="mt-1 text-sm text-slate-500">Fill the form and we&apos;ll get back soon.</p>
+
+            <form className="mt-6 grid gap-4" onSubmit={(e) => e.preventDefault()}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Full Name</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
+                    placeholder="Enter your full name"
+                    autoComplete="name"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Email Address</label>
+                  <input
+                    type="email"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
+                    placeholder="Enter your email"
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Phone Number</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
+                    placeholder="Enter your phone number"
+                    autoComplete="tel"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Subject</label>
+                  <select className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15">
+                    <option value="">Select subject</option>
+                    <option value="store">Store setup</option>
+                    <option value="billing">Billing / subscription</option>
+                    <option value="account">Account access</option>
+                    <option value="bug">Bug report</option>
+                    <option value="partnership">Partnership</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Message</label>
+                <textarea
+                  className="mt-1 min-h-[140px] w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
+                  placeholder="Write your message here..."
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#3B6DD4] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F58B3]"
+                >
+                  <Send className="h-4 w-4" />
+                  Send Message
+                </button>
+                <p className="text-xs text-slate-500">
+                  This is a UI redesign. Hook submission to backend/API when ready.
+                </p>
+              </div>
+            </form>
+          </div>
+
+          <div className="space-y-6">
+            <div className="rounded-[12px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+              <h3 className="text-base font-semibold text-slate-950">Contact Information</h3>
+              <div className="mt-5 space-y-4 text-sm text-slate-700">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 grid h-10 w-10 place-items-center rounded-[12px] bg-[#f0f4ff] text-[#3B6DD4] ring-1 ring-[#3B6DD4]/10">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900">Our Location</p>
+                    <p className="mt-0.5 text-sm text-slate-600">Baraut, Kaithal, Haryana, India</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 grid h-10 w-10 place-items-center rounded-[12px] bg-[#f0f4ff] text-[#3B6DD4] ring-1 ring-[#3B6DD4]/10">
+                    <Phone className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900">Phone Number</p>
+                    <p className="mt-0.5 text-sm text-slate-600">7015150181</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 grid h-10 w-10 place-items-center rounded-[12px] bg-[#f0f4ff] text-[#3B6DD4] ring-1 ring-[#3B6DD4]/10">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900">Email Address</p>
+                    <p className="mt-0.5 text-sm text-slate-600">support@cateloge.com</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 grid h-10 w-10 place-items-center rounded-[12px] bg-[#f0f4ff] text-[#3B6DD4] ring-1 ring-[#3B6DD4]/10">
+                    <Clock3 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900">Working Hours</p>
+                    <p className="mt-0.5 text-sm text-slate-600">Mon–Sat: 10:00 AM – 7:00 PM</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[12px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+              <h3 className="text-base font-semibold text-slate-950">Follow Us</h3>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a
+                  href="#"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-slate-700 transition hover:border-[#3B6DD4]/40 hover:bg-[#f0f4ff]"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="h-5 w-5" />
+                </a>
+                <a
+                  href="#"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-slate-700 transition hover:border-[#3B6DD4]/40 hover:bg-[#f0f4ff]"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a
+                  href="#"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-slate-700 transition hover:border-[#3B6DD4]/40 hover:bg-[#f0f4ff]"
+                  aria-label="YouTube"
+                >
+                  <Youtube className="h-5 w-5" />
+                </a>
+                <a
+                  href="#"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-slate-700 transition hover:border-[#3B6DD4]/40 hover:bg-[#f0f4ff]"
+                  aria-label="LinkedIn"
+                >
+                  <Linkedin className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 overflow-hidden rounded-[12px] border border-slate-200 bg-white shadow-sm">
+          <div className="px-6 py-5 sm:px-8">
+            <h3 className="text-base font-semibold text-slate-950">Find us on map</h3>
+            <p className="mt-1 text-sm text-slate-500">Location preview for support &amp; office reference.</p>
+          </div>
+          <div className="h-[320px] w-full bg-slate-100">
+            <iframe
+              title="Map"
+              className="h-full w-full"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              src="https://www.google.com/maps?q=Kaithal%2C%20Haryana%2C%20India&output=embed"
+            />
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

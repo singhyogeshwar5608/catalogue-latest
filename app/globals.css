@@ -1,0 +1,332 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Auth / login / create-store: keep focused fields & primary actions above the fixed bottom nav on small screens */
+@media (max-width: 767px) {
+  html:has(.auth-scroll-page),
+  html:has(.create-store-page) {
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px) + 2.5rem);
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Desktop navbar logged-out Create Store — subtle zoom in/out breathe */
+@keyframes navbar-create-store-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+.navbar-create-store-breathe-desktop {
+  transform-origin: center;
+}
+
+@media (min-width: 768px) {
+  .navbar-create-store-breathe-desktop {
+    animation: navbar-create-store-breathe 2.4s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .navbar-create-store-breathe-desktop {
+      animation: none;
+    }
+  }
+}
+
+/* Global floating Help button — zoom in / out breathe */
+@keyframes floating-help-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.09);
+  }
+}
+
+.floating-help-breathe {
+  transform-origin: center;
+  animation: floating-help-breathe 2.35s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-help-breathe {
+    animation: none;
+  }
+}
+
+@keyframes sell-card-glow-flush {
+  0%,
+  100% {
+    box-shadow:
+      0 2px 10px rgba(236, 72, 153, 0.1),
+      0 0 0 0 rgba(244, 114, 182, 0);
+  }
+  50% {
+    box-shadow:
+      0 6px 18px rgba(236, 72, 153, 0.18),
+      0 0 24px rgba(244, 114, 182, 0.2);
+  }
+}
+
+@keyframes sell-spark-ray-flush {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(0) scaleX(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(5px) scaleX(1.2);
+  }
+}
+
+.sell-start-card-animate {
+  animation: sell-card-glow-flush 2.3s ease-in-out infinite;
+}
+
+.sell-spark-ray {
+  transform-origin: left center;
+  animation: sell-spark-ray-flush 2s ease-in-out infinite;
+}
+
+/* Auth page “Create Store” pill — full-surface animated gradient + veil pulse + sweep (no shadow animation) */
+.auth-create-store-cta-surface {
+  background-image: linear-gradient(
+    105deg,
+    #1d4ed8 0%,
+    #2563eb 18%,
+    #6366f1 36%,
+    #7c3aed 54%,
+    #a855f7 74%,
+    #2563eb 92%,
+    #1d4ed8 100%
+  );
+  background-size: 280% 100%;
+  background-position: 0% 50%;
+  box-shadow: 0 14px 36px -20px rgba(37, 99, 235, 0.5);
+}
+
+@keyframes auth-create-store-cta-flow {
+  0% {
+    background-position: 8% 50%;
+  }
+  50% {
+    background-position: 92% 50%;
+  }
+  100% {
+    background-position: 8% 50%;
+  }
+}
+
+@keyframes auth-create-store-cta-veil {
+  0%,
+  100% {
+    opacity: 0.07;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes auth-create-store-cta-shine {
+  0% {
+    transform: translateX(-120%) skewX(-14deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.48;
+  }
+  52% {
+    transform: translateX(220%) skewX(-14deg);
+    opacity: 0.1;
+  }
+  100% {
+    transform: translateX(220%) skewX(-14deg);
+    opacity: 0;
+  }
+}
+
+/* Zoom (whole CTA) on wrapper; gradient flow only on button (no glow-flash, no outer rings) */
+.auth-create-store-cta-pulse-wrap {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: visible;
+  animation: auth-cta-zoom-breathe 2.15s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+@keyframes auth-cta-zoom-breathe {
+  0%,
+  100% {
+    transform: scale(0.985);
+  }
+  50% {
+    transform: scale(1.038);
+  }
+}
+
+.auth-create-store-cta-animate {
+  animation: auth-create-store-cta-flow 4s ease-in-out infinite;
+}
+
+.auth-create-store-cta-veillayer {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0) 55%);
+  animation: auth-create-store-cta-veil 2.6s ease-in-out infinite;
+}
+
+.auth-create-store-cta-shine {
+  animation: auth-create-store-cta-shine 4.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-create-store-cta-pulse-wrap {
+    animation: none;
+    transform: none;
+  }
+  .auth-create-store-cta-animate {
+    animation: none;
+    background-position: 50% 50%;
+    box-shadow: 0 16px 40px -24px rgba(37, 99, 235, 0.55);
+  }
+  .auth-create-store-cta-veillayer {
+    animation: none;
+    opacity: 0;
+  }
+  .auth-create-store-cta-shine {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* Hide Google Translate toolbar and fix body positioning */
+.goog-te-banner-frame {
+  display: none !important;
+}
+
+body {
+  top: 0px !important;
+}
+
+iframe.skiptranslate {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  display: none !important;
+}
+
+/* Hide Google Translate branding */
+.goog-logo-link {
+  display: none !important;
+}
+
+.goog-te-gadget span {
+  display: none !important;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth touch scrolling for common scroll containers */
+.overflow-y-auto,
+.overflow-auto,
+.overscroll-contain,
+.overscroll-auto,
+[class*='overflow-y-auto'],
+[class*='overflow-auto'] {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* Reduce expensive decorative animations on small screens */
+@media (max-width: 768px) {
+  .motion-safe\:animate-pulse {
+    animation: none !important;
+  }
+}
+
+/* App Router: quick visual feedback on client-side navigations */
+@keyframes nav-route-progress-slide {
+  0% {
+    transform: translateX(-100%);
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(-20%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+
+.nav-route-progress-indeterminate {
+  animation: nav-route-progress-slide 0.55s ease-out forwards;
+}
+
+/*
+ * Footer mobile accordion: beat `.footer-text-scale … { font-size: 0.8em !important }` from Footer styled-jsx.
+ * (Styled-jsx scoping prevented in-component overrides from applying to these nodes.)
+ */
+footer.footer-text-scale .footer-mobile-acc a.footer-mobile-acc-link {
+  font-size: 10px !important;
+  line-height: 1.45 !important;
+
+}
+
+footer.footer-text-scale .footer-mobile-acc span.footer-mobile-acc-contact {
+  font-size: 10px !important;
+  line-height: 1.5 !important;
+}
+
+footer.footer-text-scale .footer-mobile-acc p.footer-mobile-acc-addr-label {
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+}
+
+footer.footer-text-scale .footer-mobile-acc p.footer-mobile-acc-addr-body {
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+}

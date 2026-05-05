@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import type {
   BoostPlan,
@@ -21,8 +21,8 @@ import type {
   SubscriptionCheckoutPricing,
   StoreSubscription,
   ProductCheckoutPublic,
-} from '@/types';
-import { parseCoord, parseDistanceKm } from '@/src/lib/geo';
+} from "@/types";
+import { parseCoord, parseDistanceKm } from "@/src/lib/geo";
 import type {
   BackendBoostPlan,
   BackendProduct,
@@ -33,14 +33,14 @@ import type {
   BackendReview,
   StoreSummary,
   BackendSearchResponse,
-} from '@/types/api';
+} from "@/types/api";
 import {
   purgeProductsCatalogCacheClient,
   purgeStoresCatalogCacheClient,
   purgeUsersCatalogCacheClient,
-} from '@/src/lib/catalogCacheClient';
-import { absolutizeStorageUrl } from '@/src/lib/api-shared';
-import { formatStoreName } from '@/src/lib/format';
+} from "@/src/lib/catalogCacheClient";
+import { absolutizeStorageUrl } from "@/src/lib/api-shared";
+import { formatStoreName } from "@/src/lib/format";
 import {
   clearFreeTrialDaysClientCache,
   DEFAULT_FREE_TRIAL_DAYS,
@@ -48,9 +48,9 @@ import {
   prefetchFreeTrialDays,
   setFreeTrialDaysClientCache,
   trialEndsAtFallbackFromCreated,
-} from '@/src/lib/freeTrialDays';
-import { dispatchStoreProfileRefresh } from '@/src/lib/storeSubscriptionAddons';
-import { getOrCreateStoreEngagementGuestToken } from '@/src/lib/storeEngagementGuest';
+} from "@/src/lib/freeTrialDays";
+import { dispatchStoreProfileRefresh } from "@/src/lib/storeSubscriptionAddons";
+import { getOrCreateStoreEngagementGuestToken } from "@/src/lib/storeEngagementGuest";
 
 type ReviewListParams = {
   page?: number;
@@ -77,7 +77,7 @@ export type Category = {
   id: number;
   name: string;
   slug?: string;
-  business_type: 'product' | 'service' | 'hybrid';
+  business_type: "product" | "service" | "hybrid";
   is_active?: boolean;
   banner_image?: string | null;
   banner_images?: string[] | null;
@@ -85,7 +85,7 @@ export type Category = {
   banner_title?: string | null;
   banner_subtitle?: string | null;
   color_combinations?: { color1: string; color2: string }[] | null;
-  banner_pattern?: 'waves' | 'diagonal' | 'circles' | null;
+  banner_pattern?: "waves" | "diagonal" | "circles" | null;
 };
 
 export type HeroBannerSlideDto = {
@@ -98,7 +98,7 @@ export type HeroBannerSlideDto = {
 export type CreateCategoryPayload = {
   name: string;
   slug: string;
-  business_type: Category['business_type'];
+  business_type: Category["business_type"];
   is_active: boolean;
   banner_image?: string | null;
   banner_color?: string | null;
@@ -120,8 +120,8 @@ type ReviewSubmitPayload = {
 };
 
 export const addService = async (payload: AddServicePayload) => {
-  const response = await apiRequest<BackendService>('/services', {
-    method: 'POST',
+  const response = await apiRequest<BackendService>("/services", {
+    method: "POST",
     body: payload,
     requiresAuth: true,
   });
@@ -130,9 +130,9 @@ export const addService = async (payload: AddServicePayload) => {
     service: normalizeService(response.data, {
       id: Number(response.data.store_id ?? 0),
       user_id: 0,
-      name: '',
-      slug: '',
-      category: { id: 0, name: 'General', business_type: 'product' },
+      name: "",
+      slug: "",
+      category: { id: 0, name: "General", business_type: "product" },
       is_active: true,
       is_verified: false,
     } as BackendStore),
@@ -142,7 +142,7 @@ export const addService = async (payload: AddServicePayload) => {
 export const updateProduct = async (payload: UpdateProductPayload) => {
   const { id, ...rest } = payload;
   const response = await apiRequest<BackendProduct>(`/product/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: rest,
     requiresAuth: true,
   });
@@ -153,9 +153,9 @@ export const updateProduct = async (payload: UpdateProductPayload) => {
     product: normalizeProduct(response.data, {
       id: Number(response.data.store_id ?? 0),
       user_id: 0,
-      name: '',
-      slug: '',
-      category: { id: 0, name: 'General', business_type: 'product' },
+      name: "",
+      slug: "",
+      category: { id: 0, name: "General", business_type: "product" },
       is_active: true,
       is_verified: false,
     } as BackendStore),
@@ -164,7 +164,7 @@ export const updateProduct = async (payload: UpdateProductPayload) => {
 
 export const deleteProduct = async (productId: number | string) => {
   await apiRequest(`/product/${productId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     requiresAuth: true,
   });
   await purgeProductsCatalogCacheClient();
@@ -174,7 +174,7 @@ export type ApiUser = {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'super_admin';
+  role: "user" | "super_admin";
   storeSlug: string | null;
   stores: StoreSummary[];
 };
@@ -279,7 +279,7 @@ export type SearchAllParams = {
   lat?: number;
   lng?: number;
   radiusKm?: number;
-  types?: Array<'stores' | 'products' | 'services'>;
+  types?: Array<"stores" | "products" | "services">;
   limits?: {
     stores?: number;
     products?: number;
@@ -288,17 +288,17 @@ export type SearchAllParams = {
 };
 
 /** Live Laravel API (see `backend/bootstrap/app.php` — routes use prefix `api/v1/v1`). */
-const LIVE_API_BASE = `${(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://larawans.com').replace(/\/+$/, '')}/api/v1/v1`;
+const LIVE_API_BASE = `${(process.env.NEXT_PUBLIC_BASE_URL ?? "https://larawans.com").replace(/\/+$/, "")}/api/v1/v1`;
 
 /** Ensures a single `.../api/v1/v1` suffix (avoids POST to `/api/v1/store` or `/api/v1/v1/v1/store` by mistake). */
 function normalizeNextPublicApiBaseUrl(raw: string): string {
-  let u = raw.replace(/\/+$/, '');
+  let u = raw.replace(/\/+$/, "");
   if (/\/api\/v1\/v1$/i.test(u)) return u;
   if (/\/api\/v1$/i.test(u)) return `${u}/v1`;
   if (/\/v1\/v1$/i.test(u) && !/\/api\//i.test(u)) {
     // Origin without /api/ — caller gave host + /v1/v1; assume they meant /api/v1/v1
     if (/^https?:\/\/[^/]+/i.test(u)) {
-      u = u.replace(/\/v1\/v1$/i, '') + '/api/v1/v1';
+      u = u.replace(/\/v1\/v1$/i, "") + "/api/v1/v1";
       return u;
     }
   }
@@ -321,12 +321,17 @@ export const API_BASE_URL = resolvedPublicApiBase;
  * from some CDNs) and "Failed to fetch". Set `NEXT_PUBLIC_USE_API_PROXY=0` to force direct API URL.
  */
 function shouldUseDevLaravelProxy(): boolean {
-  if (typeof window === "undefined" || process.env.NODE_ENV !== "development") return false;
+  if (typeof window === "undefined" || process.env.NODE_ENV !== "development")
+    return false;
   if (process.env.NEXT_PUBLIC_USE_API_PROXY === "0") return false;
   if (process.env.NEXT_PUBLIC_USE_API_PROXY === "1") return true;
   const h = window.location.hostname;
   if (h === "localhost" || h === "127.0.0.1" || h === "[::1]") return true;
-  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(h) || /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  if (
+    /^192\.168\.\d{1,3}\.\d{1,3}$/.test(h) ||
+    /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)
+  )
+    return true;
   return false;
 }
 
@@ -341,7 +346,7 @@ export function getApiRequestBaseUrl(): string {
   return resolvedPublicApiBase;
 }
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   queueMicrotask(() => {
     void prefetchFreeTrialDays(getApiRequestBaseUrl());
   });
@@ -353,12 +358,12 @@ export function getGoogleOAuthApiBaseUrl(): string {
     process.env.NEXT_PUBLIC_GOOGLE_OAUTH_API_BASE_URL?.trim() ||
     process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
     LIVE_API_BASE;
-  return raw.replace(/\/+$/, '');
+  return raw.replace(/\/+$/, "");
 }
 
-const AUTH_TOKEN_HEADER = 'Authorization';
-export const AUTH_TOKEN_KEY = 'auth_token';
-export const AUTH_USER_KEY = 'auth_user';
+const AUTH_TOKEN_HEADER = "Authorization";
+export const AUTH_TOKEN_KEY = "auth_token";
+export const AUTH_USER_KEY = "auth_user";
 
 type ApiEnvelope<T> = {
   success: boolean;
@@ -372,32 +377,37 @@ export class ApiError extends Error {
 
   constructor(message: string, status?: number, payload?: unknown) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.status = status;
     this.payload = payload;
   }
 }
 
-export const isApiError = (error: unknown): error is ApiError => error instanceof ApiError;
+export const isApiError = (error: unknown): error is ApiError =>
+  error instanceof ApiError;
 
 /**
  * Reads Laravel-style validation from our JSON envelope (`data`) or plain Laravel (`errors`).
  */
-export function parseApiValidationErrors(payload: unknown): Record<string, string[]> | null {
-  if (!payload || typeof payload !== 'object') return null;
+export function parseApiValidationErrors(
+  payload: unknown,
+): Record<string, string[]> | null {
+  if (!payload || typeof payload !== "object") return null;
   const p = payload as Record<string, unknown>;
   const raw = p.data ?? p.errors;
-  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
 
   const out: Record<string, string[]> = {};
   for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
     if (Array.isArray(val)) {
-      const strs = val.filter((x): x is string => typeof x === 'string');
+      const strs = val.filter((x): x is string => typeof x === "string");
       if (strs.length) out[key] = strs;
-    } else if (typeof val === 'string') {
+    } else if (typeof val === "string") {
       out[key] = [val];
-    } else if (val && typeof val === 'object' && !Array.isArray(val)) {
-      const strs = Object.values(val as Record<string, unknown>).filter((x): x is string => typeof x === 'string');
+    } else if (val && typeof val === "object" && !Array.isArray(val)) {
+      const strs = Object.values(val as Record<string, unknown>).filter(
+        (x): x is string => typeof x === "string",
+      );
       if (strs.length) out[key] = strs;
     }
   }
@@ -405,46 +415,47 @@ export function parseApiValidationErrors(payload: unknown): Record<string, strin
 }
 
 const VALIDATION_LABELS_STORE: Record<string, string> = {
-  name: 'Store name',
-  category_id: 'Category',
-  phone: 'Phone',
-  email: 'Business email',
-  address: 'Address',
-  description: 'Description',
-  logo: 'Logo',
-  location: 'Location / area',
-  slug: 'Store link',
-  facebook_url: 'Facebook URL',
-  instagram_url: 'Instagram URL',
-  youtube_url: 'YouTube URL',
-  linkedin_url: 'LinkedIn URL',
-  show_phone: 'Phone visibility',
-  password: 'Password',
+  name: "Store name",
+  category_id: "Category",
+  phone: "Phone",
+  email: "Business email",
+  address: "Address",
+  description: "Description",
+  logo: "Logo",
+  location: "Location / area",
+  slug: "Store link",
+  facebook_url: "Facebook URL",
+  instagram_url: "Instagram URL",
+  youtube_url: "YouTube URL",
+  linkedin_url: "LinkedIn URL",
+  show_phone: "Phone visibility",
+  password: "Password",
 };
 
 const VALIDATION_LABELS_AUTH: Record<string, string> = {
   ...VALIDATION_LABELS_STORE,
-  name: 'Full name',
-  email: 'Email',
-  password: 'Password',
-  current_password: 'Current password',
-  password_confirmation: 'Confirm password',
+  name: "Full name",
+  email: "Email",
+  password: "Password",
+  current_password: "Current password",
+  password_confirmation: "Confirm password",
 };
 
 /** One readable banner string from validation map (e.g. "Email: must be valid."). */
 export function formatValidationErrorsForDisplay(
   errors: Record<string, string[]>,
-  context: 'store' | 'auth' = 'store',
+  context: "store" | "auth" = "store",
 ): string {
-  const map = context === 'auth' ? VALIDATION_LABELS_AUTH : VALIDATION_LABELS_STORE;
-  const label = (field: string) => map[field] ?? field.replace(/_/g, ' ');
+  const map =
+    context === "auth" ? VALIDATION_LABELS_AUTH : VALIDATION_LABELS_STORE;
+  const label = (field: string) => map[field] ?? field.replace(/_/g, " ");
 
   return Object.entries(errors)
     .flatMap(([field, msgs]) => msgs.map((m) => `${label(field)}: ${m}`))
-    .join('\n');
+    .join("\n");
 }
 
-const isBrowser = () => typeof window !== 'undefined';
+const isBrowser = () => typeof window !== "undefined";
 
 let authToken: string | null = null;
 
@@ -495,26 +506,34 @@ export const clearAuthToken = () => {
 export const getAuthHeaders = () => {
   ensureAuthToken();
   if (!authToken) return {};
-  return { [AUTH_TOKEN_HEADER]: `Bearer ${authToken}` } as Record<string, string>;
+  return { [AUTH_TOKEN_HEADER]: `Bearer ${authToken}` } as Record<
+    string,
+    string
+  >;
 };
 
 export const apiRequest = async <T>(
   path: string,
   options: {
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     body?: Record<string, unknown> | FormData | undefined;
     requiresAuth?: boolean;
     /** When true, sends Bearer token if present (does not throw if missing). */
     sendAuthIfAvailable?: boolean;
-  } = {}
+  } = {},
 ): Promise<ApiEnvelope<T>> => {
-  const { method = 'GET', body, requiresAuth = false, sendAuthIfAvailable = false } = options;
+  const {
+    method = "GET",
+    body,
+    requiresAuth = false,
+    sendAuthIfAvailable = false,
+  } = options;
   const url = `${getApiRequestBaseUrl()}${path}`;
 
   ensureAuthToken();
 
   const headers: HeadersInit = {
-    Accept: 'application/json',
+    Accept: "application/json",
   };
 
   let payload: BodyInit | undefined;
@@ -522,13 +541,13 @@ export const apiRequest = async <T>(
   if (body instanceof FormData) {
     payload = body;
   } else if (body) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
     payload = JSON.stringify(body);
   }
 
   if (requiresAuth) {
     if (!authToken) {
-      throw new ApiError('Unauthorized', 401);
+      throw new ApiError("Unauthorized", 401);
     }
     headers[AUTH_TOKEN_HEADER] = `Bearer ${authToken}`;
   } else if (sendAuthIfAvailable) {
@@ -542,26 +561,32 @@ export const apiRequest = async <T>(
     method,
     headers,
     body: payload,
-    cache: 'no-store',
+    cache: "no-store",
   });
 
-  const contentType = response.headers.get('content-type');
-  const responseData = contentType?.includes('application/json') ? await response.json() : null;
+  const contentType = response.headers.get("content-type");
+  const responseData = contentType?.includes("application/json")
+    ? await response.json()
+    : null;
 
   if (!response.ok) {
-    throw new ApiError(responseData?.message ?? 'Request failed', response.status, responseData);
+    throw new ApiError(
+      responseData?.message ?? "Request failed",
+      response.status,
+      responseData,
+    );
   }
 
   if (
     responseData !== null &&
-    typeof responseData === 'object' &&
-    'success' in responseData &&
+    typeof responseData === "object" &&
+    "success" in responseData &&
     (responseData as ApiEnvelope<unknown>).success === false
   ) {
     const msg =
-      typeof (responseData as ApiEnvelope<unknown>).message === 'string'
+      typeof (responseData as ApiEnvelope<unknown>).message === "string"
         ? (responseData as ApiEnvelope<unknown>).message
-        : 'Request failed';
+        : "Request failed";
     throw new ApiError(msg, response.status, responseData);
   }
 
@@ -572,10 +597,10 @@ const normalizeUser = (user: any): ApiUser => {
   const stores: StoreSummary[] = Array.isArray(user?.stores)
     ? user.stores
         .map((store: any) => ({
-          id: String(store?.id ?? ''),
-          name: store?.name ?? 'My Store',
+          id: String(store?.id ?? ""),
+          name: store?.name ?? "My Store",
           // Laravel public path is `username`; prefer it so dashboard fetches match `GET /store/:username`.
-          slug: String(store?.username ?? store?.slug ?? '').trim(),
+          slug: String(store?.username ?? store?.slug ?? "").trim(),
         }))
         .filter((store: StoreSummary) => Boolean(store.id && store.slug))
     : [];
@@ -589,53 +614,60 @@ const normalizeUser = (user: any): ApiUser => {
     null;
 
   return {
-    id: String(user?.id ?? ''),
-    name: user?.name ?? '',
-    email: user?.email ?? '',
-    role: (user?.role as 'user' | 'super_admin') ?? 'user',
+    id: String(user?.id ?? ""),
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    role: (user?.role as "user" | "super_admin") ?? "user",
     storeSlug: fallbackStoreSlug,
     stores,
   };
 };
 
-const fallbackLogo = 'https://images.unsplash.com/photo-1503602642458-232111445657?w=200&h=200&fit=crop';
-const fallbackBanner = 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200&h=400&fit=crop';
-const fallbackImage = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
+const fallbackLogo =
+  "https://images.unsplash.com/photo-1503602642458-232111445657?w=200&h=200&fit=crop";
+const fallbackBanner =
+  "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200&h=400&fit=crop";
+const fallbackImage =
+  "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop";
 
 const PRODUCT_UNIT_TYPE_VALUES: readonly ProductUnitType[] = [
-  'piece',
-  'box',
-  'pack',
-  'set',
-  'kilogram',
-  'gram',
-  'liter',
-  'milliliter',
-  'meter',
-  'centimeter',
-  'square_meter',
-  'custom',
+  "piece",
+  "box",
+  "pack",
+  "set",
+  "kilogram",
+  "gram",
+  "liter",
+  "milliliter",
+  "meter",
+  "centimeter",
+  "square_meter",
+  "custom",
 ] as const;
 
 const SERVICE_BILLING_UNIT_VALUES: readonly ServiceBillingUnit[] = [
-  'session',
-  'hour',
-  'day',
-  'week',
-  'month',
-  'project',
-  'custom',
+  "session",
+  "hour",
+  "day",
+  "week",
+  "month",
+  "project",
+  "custom",
 ] as const;
 
 const isValidProductUnitType = (value: unknown): value is ProductUnitType =>
-  typeof value === 'string' && (PRODUCT_UNIT_TYPE_VALUES as readonly string[]).includes(value);
+  typeof value === "string" &&
+  (PRODUCT_UNIT_TYPE_VALUES as readonly string[]).includes(value);
 
-const isValidServiceBillingUnit = (value: unknown): value is ServiceBillingUnit =>
-  typeof value === 'string' && (SERVICE_BILLING_UNIT_VALUES as readonly string[]).includes(value);
+const isValidServiceBillingUnit = (
+  value: unknown,
+): value is ServiceBillingUnit =>
+  typeof value === "string" &&
+  (SERVICE_BILLING_UNIT_VALUES as readonly string[]).includes(value);
 
 const toNumber = (value?: string | number | null, defaultValue = 0) => {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
     const parsed = Number(value);
     return Number.isNaN(parsed) ? defaultValue : parsed;
   }
@@ -648,18 +680,21 @@ const normalizeBoostPlan = (plan: BackendBoostPlan): BoostPlan => ({
   days: Number(plan.days ?? 0),
   price: Number(plan.price ?? 0),
   priorityWeight: Number(plan.priority_weight ?? 1),
-  badgeLabel: plan.badge_label ?? 'Boost Pro',
-  badgeColor: plan.badge_color ?? '#fde68a',
+  badgeLabel: plan.badge_label ?? "Boost Pro",
+  badgeColor: plan.badge_color ?? "#fde68a",
   isActive: plan.is_active !== false,
   features: Array.isArray(plan.features) ? plan.features : undefined,
 });
 
 const normalizeStoreBoost = (
   boost: BackendStoreBoost,
-  options: { includeStore?: boolean } = {}
+  options: { includeStore?: boolean } = {},
 ): StoreBoost => {
   const includeStore = options.includeStore ?? false;
-  const normalizedStore = includeStore && boost.store ? normalizeStore(boost.store, { includeActiveBoost: false }) : undefined;
+  const normalizedStore =
+    includeStore && boost.store
+      ? normalizeStore(boost.store, { includeActiveBoost: false })
+      : undefined;
 
   return {
     id: String(boost.id),
@@ -686,87 +721,110 @@ function resolveTrialEndsAt(store: BackendStore): string | null {
 }
 
 /** Read social URLs from snake_case, camelCase, or trimmed empty strings (Laravel / proxies vary). */
-function backendStoreSocialLinks(store: BackendStore): NonNullable<Store['socialLinks']> {
+function backendStoreSocialLinks(
+  store: BackendStore,
+): NonNullable<Store["socialLinks"]> {
   const r = store as BackendStore & Record<string, unknown>;
   const pick = (snake: keyof BackendStore, camel: string): string | null => {
     const a = r[snake as string];
-    if (typeof a === 'string' && a.trim() !== '') return a.trim();
+    if (typeof a === "string" && a.trim() !== "") return a.trim();
     const b = r[camel];
-    if (typeof b === 'string' && b.trim() !== '') return b.trim();
+    if (typeof b === "string" && b.trim() !== "") return b.trim();
     return null;
   };
   return {
-    facebook: pick('facebook_url', 'facebookUrl'),
-    instagram: pick('instagram_url', 'instagramUrl'),
-    youtube: pick('youtube_url', 'youtubeUrl'),
-    linkedin: pick('linkedin_url', 'linkedinUrl'),
+    facebook: pick("facebook_url", "facebookUrl"),
+    instagram: pick("instagram_url", "instagramUrl"),
+    youtube: pick("youtube_url", "youtubeUrl"),
+    linkedin: pick("linkedin_url", "linkedinUrl"),
   };
 }
 
 /** If PUT echoed a row without social columns, keep what we just sent (only for keys present on `payload`). */
-function mergeUpdateStoreSocialFromPayload(store: Store, payload: UpdateStorePayload): Store {
+function mergeUpdateStoreSocialFromPayload(
+  store: Store,
+  payload: UpdateStorePayload,
+): Store {
   if (
-    !('facebook_url' in payload) &&
-    !('instagram_url' in payload) &&
-    !('youtube_url' in payload) &&
-    !('linkedin_url' in payload)
+    !("facebook_url" in payload) &&
+    !("instagram_url" in payload) &&
+    !("youtube_url" in payload) &&
+    !("linkedin_url" in payload)
   ) {
     return store;
   }
   const cur = store.socialLinks ?? {};
-  const pick = (key: keyof NonNullable<Store['socialLinks']>, field: keyof UpdateStorePayload) => {
+  const pick = (
+    key: keyof NonNullable<Store["socialLinks"]>,
+    field: keyof UpdateStorePayload,
+  ) => {
     if (!(field in payload)) return cur[key] ?? null;
     const sent = payload[field];
     if (sent === null) return null;
-    if (typeof sent === 'string' && sent.trim() !== '') return sent.trim();
+    if (typeof sent === "string" && sent.trim() !== "") return sent.trim();
     const fromApi = cur[key];
-    if (typeof fromApi === 'string' && fromApi.trim() !== '') return fromApi.trim();
+    if (typeof fromApi === "string" && fromApi.trim() !== "")
+      return fromApi.trim();
     return null;
   };
   return {
     ...store,
     socialLinks: {
-      facebook: pick('facebook', 'facebook_url'),
-      instagram: pick('instagram', 'instagram_url'),
-      youtube: pick('youtube', 'youtube_url'),
-      linkedin: pick('linkedin', 'linkedin_url'),
+      facebook: pick("facebook", "facebook_url"),
+      instagram: pick("instagram", "instagram_url"),
+      youtube: pick("youtube", "youtube_url"),
+      linkedin: pick("linkedin", "linkedin_url"),
     },
   };
 }
 
 const normalizeStore = (
   store: BackendStore,
-  options: { includeActiveBoost?: boolean } = {}
+  options: { includeActiveBoost?: boolean } = {},
 ): Store => {
   const includeActiveBoost = options.includeActiveBoost ?? true;
-  const description = store.description ?? '';
-  const businessType = store.business_type ?? store.category?.business_type ?? 'product';
+  const description = store.description ?? "";
+  const businessType =
+    store.business_type ?? store.category?.business_type ?? "product";
   const categoryName = store.category?.name ?? undefined;
-  const shortDescription = store.short_description ?? (description.slice(0, 120) || businessType);
+  const shortDescription =
+    store.short_description ?? (description.slice(0, 120) || businessType);
   const ratingRaw = toNumber(store.rating);
   const rating = ratingRaw > 0 ? Number(ratingRaw.toFixed(1)) : 0;
   const totalReviews = Math.max(0, Math.trunc(toNumber(store.total_reviews)));
-  const layout = store.layout_type === 'layout2' ? 'layout2' : 'layout1';
-  const storeBannerImageRaw = typeof store.banner === 'string' && store.banner.trim() ? store.banner.trim() : null;
+  const layout = store.layout_type === "layout2" ? "layout2" : "layout1";
+  const storeBannerImageRaw =
+    typeof store.banner === "string" && store.banner.trim()
+      ? store.banner.trim()
+      : null;
   const categoryBannerImage = store.category?.banner_image ?? null;
   const categoryBannerColor = store.category?.banner_color ?? null;
-  const resolvedBanner = storeBannerImageRaw ?? categoryBannerImage ?? fallbackBanner;
-  const storeBannerImage = storeBannerImageRaw ? absolutizeStorageUrl(storeBannerImageRaw) : null;
-  const banner = absolutizeStorageUrl(
-    typeof resolvedBanner === 'string' && resolvedBanner.trim() ? resolvedBanner.trim() : String(fallbackBanner),
-  );
-  const activeBoost = includeActiveBoost && store.active_boost
-    ? normalizeStoreBoost(store.active_boost, { includeStore: false })
+  const resolvedBanner =
+    storeBannerImageRaw ?? categoryBannerImage ?? fallbackBanner;
+  const storeBannerImage = storeBannerImageRaw
+    ? absolutizeStorageUrl(storeBannerImageRaw)
     : null;
+  const banner = absolutizeStorageUrl(
+    typeof resolvedBanner === "string" && resolvedBanner.trim()
+      ? resolvedBanner.trim()
+      : String(fallbackBanner),
+  );
+  const activeBoost =
+    includeActiveBoost && store.active_boost
+      ? normalizeStoreBoost(store.active_boost, { includeStore: false })
+      : null;
 
-  const activeSubscription = (store as any).active_subscription ?? (store as any).activeSubscription ?? null;
+  const activeSubscription =
+    (store as any).active_subscription ??
+    (store as any).activeSubscription ??
+    null;
   const normalizedSubscription = activeSubscription?.plan
     ? {
         id: String(activeSubscription.id),
         storeId: String(activeSubscription.store_id ?? store.id),
         subscriptionPlanId: String(activeSubscription.subscription_plan_id),
         price: Number(activeSubscription.price ?? 0),
-        status: activeSubscription.status ?? 'active',
+        status: activeSubscription.status ?? "active",
         startsAt: activeSubscription.starts_at,
         endsAt: activeSubscription.ends_at,
         autoRenew: Boolean(activeSubscription.auto_renew ?? true),
@@ -776,20 +834,28 @@ const normalizeStore = (
           name: activeSubscription.plan.name,
           slug: activeSubscription.plan.slug,
           price: Number(activeSubscription.plan.price ?? 0),
-          billingCycle: activeSubscription.plan.billing_cycle ?? 'monthly',
-          durationDays: activeSubscription.plan.duration_days ? Number(activeSubscription.plan.duration_days) : undefined,
+          billingCycle: activeSubscription.plan.billing_cycle ?? "monthly",
+          durationDays: activeSubscription.plan.duration_days
+            ? Number(activeSubscription.plan.duration_days)
+            : undefined,
           maxProducts: Number(activeSubscription.plan.max_products ?? 0),
           isPopular: Boolean(activeSubscription.plan.is_popular),
           isActive: Boolean(activeSubscription.plan.is_active),
-          features: Array.isArray(activeSubscription.plan.features) ? activeSubscription.plan.features : [],
-          description: activeSubscription.plan.description ?? '',
+          features: Array.isArray(activeSubscription.plan.features)
+            ? activeSubscription.plan.features
+            : [],
+          description: activeSubscription.plan.description ?? "",
         },
       }
     : null;
 
-  let subscriptionAddons: Store['subscriptionAddons'];
+  let subscriptionAddons: Store["subscriptionAddons"];
   const rawAddons = (store as BackendStore).subscription_addons;
-  if (rawAddons != null && typeof rawAddons === 'object' && !Array.isArray(rawAddons)) {
+  if (
+    rawAddons != null &&
+    typeof rawAddons === "object" &&
+    !Array.isArray(rawAddons)
+  ) {
     subscriptionAddons = {
       paymentGateway: Boolean(rawAddons.payment_gateway),
       qrCode: Boolean(rawAddons.qr_code),
@@ -804,14 +870,17 @@ const normalizeStore = (
         slug: store.category.slug,
         business_type: store.category.business_type,
         banner_image:
-          typeof store.category.banner_image === 'string' && store.category.banner_image.trim()
+          typeof store.category.banner_image === "string" &&
+          store.category.banner_image.trim()
             ? absolutizeStorageUrl(store.category.banner_image.trim())
             : null,
         banner_images: Array.isArray(store.category.banner_images)
           ? store.category.banner_images
-              .filter((url): url is string => Boolean(url && typeof url === 'string'))
+              .filter((url): url is string =>
+                Boolean(url && typeof url === "string"),
+              )
               .map((url) => absolutizeStorageUrl(url.trim()))
-          : store.category.banner_images ?? null,
+          : (store.category.banner_images ?? null),
         banner_title: store.category.banner_title ?? null,
         banner_subtitle: store.category.banner_subtitle ?? null,
         banner_color: store.category.banner_color ?? null,
@@ -821,16 +890,20 @@ const normalizeStore = (
     : undefined;
 
   const publicStorePath = String(
-    store.slug ?? (store as BackendStore & { username?: string }).username ?? ''
+    store.slug ??
+      (store as BackendStore & { username?: string }).username ??
+      "",
   ).trim();
 
   const logoRaw = store.logo;
   const logoTrimmed =
-    typeof logoRaw === 'string' && logoRaw.trim() !== '' ? logoRaw.trim() : null;
+    typeof logoRaw === "string" && logoRaw.trim() !== ""
+      ? logoRaw.trim()
+      : null;
   const resolvedLogo = logoTrimmed ? absolutizeStorageUrl(logoTrimmed) : null;
 
   const categoryBannerImageResolved =
-    typeof categoryBannerImage === 'string' && categoryBannerImage.trim()
+    typeof categoryBannerImage === "string" && categoryBannerImage.trim()
       ? absolutizeStorageUrl(categoryBannerImage.trim())
       : null;
 
@@ -856,14 +929,14 @@ const normalizeStore = (
     categoryName,
     categoryId: store.category_id ? String(store.category_id) : undefined,
     themeId: store.theme ?? undefined,
-    location: store.location ?? store.address ?? 'Pan India',
+    location: store.location ?? store.address ?? "Pan India",
     latitude: parseCoord(store.latitude),
     longitude: parseCoord(store.longitude),
     distanceKm: parseDistanceKm(store.distance_km),
     phone: store.phone ?? undefined,
     email: store.email?.trim() ? store.email.trim() : undefined,
     showPhone: store.show_phone !== false,
-    whatsapp: (store.whatsapp ?? store.phone ?? '').trim() || '',
+    whatsapp: (store.whatsapp ?? store.phone ?? "").trim() || "",
     socialLinks: backendStoreSocialLinks(store),
     layoutType: layout,
     createdAt:
@@ -871,17 +944,21 @@ const normalizeStore = (
       (store as BackendStore & { createdAt?: string | null }).createdAt ??
       new Date().toISOString(),
     trialEndsAt: resolveTrialEndsAt(store),
-    isLifetime: Boolean((store as BackendStore & { is_lifetime?: unknown }).is_lifetime),
+    isLifetime: Boolean(
+      (store as BackendStore & { is_lifetime?: unknown }).is_lifetime,
+    ),
     activeBoost,
     activeSubscription: normalizedSubscription,
     subscriptionAddons,
-    productsCount: (store as any).products_count ?? (store.products ? store.products.length : undefined),
+    productsCount:
+      (store as any).products_count ??
+      (store.products ? store.products.length : undefined),
     servicesCount: (store as any).services_count ?? undefined,
     user: store.user
       ? {
           id: String(store.user.id),
-          name: store.user.name ?? 'Unknown',
-          email: store.user.email ?? '',
+          name: store.user.name ?? "Unknown",
+          email: store.user.email ?? "",
         }
       : undefined,
     category: normalizedCategory,
@@ -891,40 +968,71 @@ const normalizeStore = (
     services: store.services
       ? store.services.map((service) => normalizeService(service, store))
       : undefined,
-    followersCount: Math.max(0, Math.trunc(toNumber((store as BackendStore).followers_count))),
-    likesCount: Math.max(0, Math.trunc(toNumber((store as BackendStore).likes_count))),
+    followersCount: Math.max(
+      0,
+      Math.trunc(toNumber((store as BackendStore).followers_count)),
+    ),
+    likesCount: Math.max(
+      0,
+      Math.trunc(toNumber((store as BackendStore).likes_count)),
+    ),
     viewerFollowing: Boolean((store as BackendStore).viewer_following),
     viewerLiked: Boolean((store as BackendStore).viewer_liked),
-    seenCount: Math.max(0, Math.trunc(toNumber((store as BackendStore).seen_count))),
+    seenCount: Math.max(
+      0,
+      Math.trunc(toNumber((store as BackendStore).seen_count)),
+    ),
   };
 };
 
-const normalizeProduct = (product: BackendProduct, store: BackendStore): Product => {
+const normalizeProduct = (
+  product: BackendProduct,
+  store: BackendStore,
+): Product => {
   const ratingValue = toNumber(product.rating);
   const totalReviews = Math.max(0, Math.trunc(toNumber(product.total_reviews)));
-  const baseImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+  const baseImages = Array.isArray(product.images)
+    ? product.images.filter(Boolean)
+    : [];
   const images = baseImages.length
     ? baseImages
     : product.image
       ? [product.image]
       : [fallbackImage];
 
-  const unitQuantityValue = product.unit_quantity != null ? Number(product.unit_quantity) : null;
-  const wholesalePriceValue = product.wholesale_price != null ? Number(product.wholesale_price) : null;
-  const wholesaleMinQtyValue = product.wholesale_min_qty != null ? Number(product.wholesale_min_qty) : null;
+  const unitQuantityValue =
+    product.unit_quantity != null ? Number(product.unit_quantity) : null;
+  const wholesalePriceValue =
+    product.wholesale_price != null ? Number(product.wholesale_price) : null;
+  const wholesaleMinQtyValue =
+    product.wholesale_min_qty != null
+      ? Number(product.wholesale_min_qty)
+      : null;
 
   let unitQuantity: number | null = null;
-  if (unitQuantityValue != null && !Number.isNaN(unitQuantityValue) && unitQuantityValue > 0) {
+  if (
+    unitQuantityValue != null &&
+    !Number.isNaN(unitQuantityValue) &&
+    unitQuantityValue > 0
+  ) {
     unitQuantity = unitQuantityValue;
   }
 
   let wholesalePrice: number | null = null;
-  if (product.wholesale_enabled && wholesalePriceValue != null && !Number.isNaN(wholesalePriceValue)) {
+  if (
+    product.wholesale_enabled &&
+    wholesalePriceValue != null &&
+    !Number.isNaN(wholesalePriceValue)
+  ) {
     wholesalePrice = wholesalePriceValue;
   }
 
   let wholesaleMinQty: number | null = null;
-  if (product.wholesale_enabled && wholesaleMinQtyValue != null && !Number.isNaN(wholesaleMinQtyValue)) {
+  if (
+    product.wholesale_enabled &&
+    wholesaleMinQtyValue != null &&
+    !Number.isNaN(wholesaleMinQtyValue)
+  ) {
     wholesaleMinQty = wholesaleMinQtyValue;
   }
 
@@ -944,25 +1052,40 @@ const normalizeProduct = (product: BackendProduct, store: BackendStore): Product
     }
   }
 
-  const discountStartsAt = product.discount_schedule_enabled ? product.discount_starts_at ?? null : null;
-  const discountEndsAt = product.discount_schedule_enabled ? product.discount_ends_at ?? null : null;
+  const discountStartsAt = product.discount_schedule_enabled
+    ? (product.discount_starts_at ?? null)
+    : null;
+  const discountEndsAt = product.discount_schedule_enabled
+    ? (product.discount_ends_at ?? null)
+    : null;
 
   return {
     id: String(product.id),
     storeId: String(product.store_id ?? store.id),
     storeName: formatStoreName(store.name),
     storeSlug: store.slug ?? (store as any).username ?? undefined,
-    name: product.title ?? (product as BackendProduct & { name?: string }).name ?? 'Untitled product',
-    description: product.description ?? '',
+    name:
+      product.title ??
+      (product as BackendProduct & { name?: string }).name ??
+      "Untitled product",
+    description: product.description ?? "",
     price: Number(product.price ?? 0),
-    originalPrice: product.original_price != null ? Number(product.original_price) : undefined,
+    originalPrice:
+      product.original_price != null
+        ? Number(product.original_price)
+        : undefined,
     image: images[0] ?? fallbackImage,
     images,
-    category: product.category ?? store.category?.name ?? 'General',
+    category: product.category ?? store.category?.name ?? "General",
     rating: ratingValue > 0 ? Number(ratingValue.toFixed(1)) : 0,
     totalReviews,
-    inStock: Boolean(product.is_active ?? (product as BackendProduct & { status?: boolean }).status),
-    unitType: isValidProductUnitType(product.unit_type) ? (product.unit_type as ProductUnitType) : undefined,
+    inStock: Boolean(
+      product.is_active ??
+      (product as BackendProduct & { status?: boolean }).status,
+    ),
+    unitType: isValidProductUnitType(product.unit_type)
+      ? (product.unit_type as ProductUnitType)
+      : undefined,
     unitCustomLabel: product.unit_custom_label ?? null,
     unitQuantity,
     wholesaleEnabled: Boolean(product.wholesale_enabled),
@@ -979,12 +1102,21 @@ const normalizeProduct = (product: BackendProduct, store: BackendStore): Product
   };
 };
 
-const normalizeService = (service: BackendService, store: BackendStore): Service => {
-  const minQuantityValue = service.min_quantity != null ? Number(service.min_quantity) : null;
-  const packagePriceValue = service.package_price != null ? Number(service.package_price) : null;
+const normalizeService = (
+  service: BackendService,
+  store: BackendStore,
+): Service => {
+  const minQuantityValue =
+    service.min_quantity != null ? Number(service.min_quantity) : null;
+  const packagePriceValue =
+    service.package_price != null ? Number(service.package_price) : null;
 
   let minQuantity: number | null = null;
-  if (minQuantityValue != null && !Number.isNaN(minQuantityValue) && minQuantityValue > 0) {
+  if (
+    minQuantityValue != null &&
+    !Number.isNaN(minQuantityValue) &&
+    minQuantityValue > 0
+  ) {
     minQuantity = minQuantityValue;
   }
 
@@ -999,11 +1131,13 @@ const normalizeService = (service: BackendService, store: BackendStore): Service
     storeName: formatStoreName(store.name),
     storeSlug: store.slug ?? (store as any).username ?? undefined,
     title: service.title,
-    description: service.description ?? '',
+    description: service.description ?? "",
     price: service.price != null ? Number(service.price) : null,
     image: service.image ?? fallbackImage,
     isActive: Boolean(service.is_active),
-    billingUnit: isValidServiceBillingUnit(service.billing_unit) ? (service.billing_unit as ServiceBillingUnit) : undefined,
+    billingUnit: isValidServiceBillingUnit(service.billing_unit)
+      ? (service.billing_unit as ServiceBillingUnit)
+      : undefined,
     customBillingUnit: service.custom_billing_unit ?? null,
     minQuantity,
     packagePrice,
@@ -1017,18 +1151,23 @@ const normalizeReview = (review: BackendReview): Review => {
   const sellerReply = review.seller_reply?.message
     ? {
         message: review.seller_reply.message,
-        date: review.seller_reply.date ?? review.reviewed_at ?? new Date().toISOString(),
+        date:
+          review.seller_reply.date ??
+          review.reviewed_at ??
+          new Date().toISOString(),
       }
     : undefined;
 
   return {
     id: String(review.id),
-    storeId: review.store_id ? String(review.store_id) : '',
+    storeId: review.store_id ? String(review.store_id) : "",
     productId: review.product_id ? String(review.product_id) : undefined,
-    userName: review.user_name || review.user?.name || 'Anonymous',
-    userAvatar: review.user_avatar || (review.user?.avatar ? String(review.user.avatar) : undefined),
+    userName: review.user_name || review.user?.name || "Anonymous",
+    userAvatar:
+      review.user_avatar ||
+      (review.user?.avatar ? String(review.user.avatar) : undefined),
     rating: ratingValue,
-    comment: review.comment ?? '',
+    comment: review.comment ?? "",
     reviewedAt: review.reviewed_at ?? new Date().toISOString(),
     sellerReply,
     isApproved: review.is_approved !== false,
@@ -1036,10 +1175,10 @@ const normalizeReview = (review: BackendReview): Review => {
 };
 
 const parseRatingDistribution = (
-  raw: BackendReviewListResponse['summary']['rating_distribution'] | undefined
-): RatingSummary['distribution'] | undefined => {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const out: NonNullable<RatingSummary['distribution']> = {};
+  raw: BackendReviewListResponse["summary"]["rating_distribution"] | undefined,
+): RatingSummary["distribution"] | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: NonNullable<RatingSummary["distribution"]> = {};
   for (let s = 1; s <= 5; s++) {
     const v = (raw as Record<string, unknown>)[String(s)];
     if (v == null) continue;
@@ -1051,7 +1190,9 @@ const parseRatingDistribution = (
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
-const normalizeReviewListResponse = (payload: BackendReviewListResponse): ReviewListResponse => ({
+const normalizeReviewListResponse = (
+  payload: BackendReviewListResponse,
+): ReviewListResponse => ({
   summary: {
     rating: Number(payload.summary?.rating ?? 0),
     totalReviews: Number(payload.summary?.total_reviews ?? 0),
@@ -1060,36 +1201,48 @@ const normalizeReviewListResponse = (payload: BackendReviewListResponse): Review
   pagination: {
     currentPage: payload.pagination?.current_page ?? 1,
     lastPage: payload.pagination?.last_page ?? 1,
-    perPage: payload.pagination?.per_page ?? (payload.reviews?.length ?? 0),
+    perPage: payload.pagination?.per_page ?? payload.reviews?.length ?? 0,
     total: payload.pagination?.total ?? payload.reviews?.length ?? 0,
     hasMore: Boolean(payload.pagination?.has_more),
   },
-  reviews: Array.isArray(payload.reviews) ? payload.reviews.map((review) => normalizeReview(review)) : [],
+  reviews: Array.isArray(payload.reviews)
+    ? payload.reviews.map((review) => normalizeReview(review))
+    : [],
 });
 
-export const getCategories = async (options?: { auth?: boolean }): Promise<Category[]> => {
-  const response = await apiRequest<Category[]>('/categories', {
+export const getCategories = async (options?: {
+  auth?: boolean;
+}): Promise<Category[]> => {
+  const response = await apiRequest<Category[]>("/categories", {
     requiresAuth: options?.auth ?? false,
   });
   return response.data;
 };
 
 export const getHeroBannerSlides = async (): Promise<HeroBannerSlideDto[]> => {
-  const response = await apiRequest<HeroBannerSlideDto[]>('/categories/hero-banners');
+  const response = await apiRequest<HeroBannerSlideDto[]>(
+    "/categories/hero-banners",
+  );
   const rows = Array.isArray(response.data) ? response.data : [];
   return rows
     .map((row) => ({
-      key: typeof row?.key === 'string' && row.key.trim() ? row.key.trim() : `slide-${Math.random().toString(36).slice(2)}`,
-      image: typeof row?.image === 'string' ? row.image.trim() : '',
-      title: typeof row?.title === 'string' ? row.title.trim() : '',
-      subtitle: typeof row?.subtitle === 'string' ? row.subtitle.trim() : undefined,
+      key:
+        typeof row?.key === "string" && row.key.trim()
+          ? row.key.trim()
+          : `slide-${Math.random().toString(36).slice(2)}`,
+      image: typeof row?.image === "string" ? row.image.trim() : "",
+      title: typeof row?.title === "string" ? row.title.trim() : "",
+      subtitle:
+        typeof row?.subtitle === "string" ? row.subtitle.trim() : undefined,
     }))
-    .filter((row) => row.image !== '');
+    .filter((row) => row.image !== "");
 };
 
-export const createCategory = async (payload: CreateCategoryPayload): Promise<Category> => {
-  const response = await apiRequest<Category>('/categories', {
-    method: 'POST',
+export const createCategory = async (
+  payload: CreateCategoryPayload,
+): Promise<Category> => {
+  const response = await apiRequest<Category>("/categories", {
+    method: "POST",
     body: payload,
     requiresAuth: true,
   });
@@ -1099,27 +1252,35 @@ export const createCategory = async (payload: CreateCategoryPayload): Promise<Ca
 
 export const updateCategoryBanner = async (
   categoryId: number | string,
-  payload: UpdateCategoryBannerPayload
+  payload: UpdateCategoryBannerPayload,
 ): Promise<Category> => {
-  const response = await apiRequest<Category>(`/categories/${categoryId}/banner`, {
-    method: 'PUT',
-    body: payload,
-    requiresAuth: true,
-  });
+  const response = await apiRequest<Category>(
+    `/categories/${categoryId}/banner`,
+    {
+      method: "PUT",
+      body: payload,
+      requiresAuth: true,
+    },
+  );
 
   return response.data;
 };
 
-export const deleteCategory = async (categoryId: number | string): Promise<void> => {
+export const deleteCategory = async (
+  categoryId: number | string,
+): Promise<void> => {
   await apiRequest(`/categories/${categoryId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     requiresAuth: true,
   });
 };
 
 export const createStore = async (payload: CreateStorePayload) => {
-  const response = await apiRequest<{ store: BackendStore; business_type: string }>("/store", {
-    method: 'POST',
+  const response = await apiRequest<{
+    store: BackendStore;
+    business_type: string;
+  }>("/store", {
+    method: "POST",
     body: payload,
     requiresAuth: true,
   });
@@ -1134,7 +1295,8 @@ export const createStore = async (payload: CreateStorePayload) => {
       slug: normalizedStore.username,
     };
     const nextStores = [...(existingUser.stores ?? []), newStoreSummary].filter(
-      (store, index, self) => self.findIndex((candidate) => candidate.id === store.id) === index
+      (store, index, self) =>
+        self.findIndex((candidate) => candidate.id === store.id) === index,
     );
 
     const updatedUser: ApiUser = {
@@ -1152,8 +1314,8 @@ export const createStore = async (payload: CreateStorePayload) => {
 };
 
 export const getMyStores = async (): Promise<Store[]> => {
-  const response = await apiRequest<BackendStore[]>('/my/stores', {
-    method: 'GET',
+  const response = await apiRequest<BackendStore[]>("/my/stores", {
+    method: "GET",
     requiresAuth: true,
   });
 
@@ -1161,7 +1323,9 @@ export const getMyStores = async (): Promise<Store[]> => {
 };
 
 /** When login/me omits store slug, fetch owned stores so redirect can use `/store/{slug}`. */
-const enrichUserWithMyStoresIfNeeded = async (user: ApiUser): Promise<ApiUser> => {
+const enrichUserWithMyStoresIfNeeded = async (
+  user: ApiUser,
+): Promise<ApiUser> => {
   if (user.storeSlug?.trim()) {
     return user;
   }
@@ -1192,11 +1356,11 @@ const enrichUserWithMyStoresIfNeeded = async (user: ApiUser): Promise<ApiUser> =
 
 export const loginUser = async (payload: LoginPayload) => {
   const response = await apiRequest<{ token: string; user: ApiUser }>(
-    '/auth/login',
+    "/auth/login",
     {
-      method: 'POST',
+      method: "POST",
       body: payload,
-    }
+    },
   );
 
   const normalizedUser = normalizeUser(response.data.user);
@@ -1208,11 +1372,11 @@ export const loginUser = async (payload: LoginPayload) => {
 
 export const registerUser = async (payload: RegisterPayload) => {
   const response = await apiRequest<{ token: string; user: ApiUser }>(
-    '/auth/register',
+    "/auth/register",
     {
-      method: 'POST',
+      method: "POST",
       body: payload,
-    }
+    },
   );
 
   const normalizedUser = normalizeUser(response.data.user);
@@ -1224,7 +1388,7 @@ export const registerUser = async (payload: RegisterPayload) => {
 };
 
 export const fetchAuthenticatedUser = async (): Promise<ApiUser> => {
-  const response = await apiRequest<ApiUser>('/auth/me', {
+  const response = await apiRequest<ApiUser>("/auth/me", {
     requiresAuth: true,
   });
 
@@ -1234,9 +1398,13 @@ export const fetchAuthenticatedUser = async (): Promise<ApiUser> => {
 
 /** Payload from GET `/api/stores*` is already a client `Store` (camelCase); Laravel rows are snake_case `BackendStore`. */
 function isNextCachedStorePayload(value: unknown): value is Store {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== "object") return false;
   const o = value as Record<string, unknown>;
-  return typeof o.id === 'string' && typeof o.username === 'string' && typeof o.layoutType === 'string';
+  return (
+    typeof o.id === "string" &&
+    typeof o.username === "string" &&
+    typeof o.layoutType === "string"
+  );
 }
 
 /** Redis-cached rows skip normalizeStore; still rewrite storage URLs so /storage hits Next rewrites. */
@@ -1248,7 +1416,9 @@ function rewriteStoreMediaPaths(store: Store): Store {
           ? absolutizeStorageUrl(store.category.banner_image)
           : null,
         banner_images: Array.isArray(store.category.banner_images)
-          ? store.category.banner_images.map((u) => absolutizeStorageUrl(typeof u === 'string' ? u : String(u)))
+          ? store.category.banner_images.map((u) =>
+              absolutizeStorageUrl(typeof u === "string" ? u : String(u)),
+            )
           : store.category.banner_images,
       }
     : store.category;
@@ -1257,7 +1427,9 @@ function rewriteStoreMediaPaths(store: Store): Store {
     ...store,
     logo: absolutizeStorageUrl(store.logo),
     banner: absolutizeStorageUrl(store.banner),
-    storeBannerImage: store.storeBannerImage ? absolutizeStorageUrl(store.storeBannerImage) : null,
+    storeBannerImage: store.storeBannerImage
+      ? absolutizeStorageUrl(store.storeBannerImage)
+      : null,
     categoryBannerImage: store.categoryBannerImage
       ? absolutizeStorageUrl(store.categoryBannerImage)
       : null,
@@ -1280,38 +1452,46 @@ export const getStoreBySlug = async (slug: string): Promise<Store> => {
  */
 export const getStoreBySlugFromApi = async (slug: string): Promise<Store> => {
   const key = slug.trim();
-  const prefetchBase = typeof window !== 'undefined' ? getApiRequestBaseUrl() : API_BASE_URL;
+  const prefetchBase =
+    typeof window !== "undefined" ? getApiRequestBaseUrl() : API_BASE_URL;
   await prefetchFreeTrialDays(prefetchBase, { force: true });
 
-  const base = getApiRequestBaseUrl().replace(/\/+$/, '');
-  const guest = typeof window !== 'undefined' ? getOrCreateStoreEngagementGuestToken() : '';
+  const base = getApiRequestBaseUrl().replace(/\/+$/, "");
+  const guest =
+    typeof window !== "undefined" ? getOrCreateStoreEngagementGuestToken() : "";
   const qs = new URLSearchParams();
-  if (guest) qs.set('guest_token', guest);
-  qs.set('_ts', String(Date.now()));
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (guest) qs.set("guest_token", guest);
+  qs.set("_ts", String(Date.now()));
+  const headers: Record<string, string> = { Accept: "application/json" };
   ensureAuthToken();
   if (authToken) {
     headers[AUTH_TOKEN_HEADER] = `Bearer ${authToken}`;
   }
-  const res = await fetch(`${base}/store/${encodeURIComponent(key)}?${qs.toString()}`, {
-    method: 'GET',
-    headers,
-    cache: 'no-store',
-  });
+  const res = await fetch(
+    `${base}/store/${encodeURIComponent(key)}?${qs.toString()}`,
+    {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    },
+  );
 
   if (res.status === 404) {
-    throw new ApiError('Store not found', 404);
+    throw new ApiError("Store not found", 404);
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new ApiError(`Store request failed (${res.status}): ${text.slice(0, 120)}`, res.status);
+    const text = await res.text().catch(() => "");
+    throw new ApiError(
+      `Store request failed (${res.status}): ${text.slice(0, 120)}`,
+      res.status,
+    );
   }
 
   const envelope = (await res.json()) as ApiEnvelope<BackendStore>;
   const raw = envelope?.data;
-  if (!raw || typeof raw !== 'object') {
-    throw new ApiError('Invalid store response', 502);
+  if (!raw || typeof raw !== "object") {
+    throw new ApiError("Invalid store response", 502);
   }
 
   return ensureStoreTrialEndsAt(normalizeStore(raw as BackendStore));
@@ -1326,20 +1506,26 @@ export type StoreEngagementTogglePayload = {
 
 export const toggleStoreFollow = async (storeId: string) => {
   const guest = getOrCreateStoreEngagementGuestToken();
-  return apiRequest<StoreEngagementTogglePayload>(`/stores/${encodeURIComponent(storeId)}/follow`, {
-    method: 'POST',
-    body: guest ? { guest_token: guest } : {},
-    sendAuthIfAvailable: true,
-  });
+  return apiRequest<StoreEngagementTogglePayload>(
+    `/stores/${encodeURIComponent(storeId)}/follow`,
+    {
+      method: "POST",
+      body: guest ? { guest_token: guest } : {},
+      sendAuthIfAvailable: true,
+    },
+  );
 };
 
 export const toggleStoreLike = async (storeId: string) => {
   const guest = getOrCreateStoreEngagementGuestToken();
-  return apiRequest<StoreEngagementTogglePayload>(`/stores/${encodeURIComponent(storeId)}/like`, {
-    method: 'POST',
-    body: guest ? { guest_token: guest } : {},
-    sendAuthIfAvailable: true,
-  });
+  return apiRequest<StoreEngagementTogglePayload>(
+    `/stores/${encodeURIComponent(storeId)}/like`,
+    {
+      method: "POST",
+      body: guest ? { guest_token: guest } : {},
+      sendAuthIfAvailable: true,
+    },
+  );
 };
 
 export type StoreSeenRecordPayload = {
@@ -1353,7 +1539,7 @@ export type StoreOwnerNotification = {
   id: number;
   store_id: number;
   store_name?: string | null;
-  type: 'follow' | 'like' | 'seen' | 'subscription' | string;
+  type: "follow" | "like" | "seen" | "subscription" | string;
   title?: string | null;
   body?: string | null;
   meta?: Record<string, unknown> | null;
@@ -1372,7 +1558,11 @@ export type UserFollowNotification = {
   type: string;
   title?: string | null;
   body?: string | null;
-  meta?: { store_id?: number; product_id?: number; store_username?: string | null } | null;
+  meta?: {
+    store_id?: number;
+    product_id?: number;
+    store_username?: string | null;
+  } | null;
   read_at?: string | null;
   created_at?: string | null;
 };
@@ -1385,11 +1575,14 @@ export type UserFollowNotificationsPayload = {
 /** Record a store page visit (max 10 counted contributions per visitor per store on the server). */
 export const recordStoreView = async (storeId: string) => {
   const guest = getOrCreateStoreEngagementGuestToken();
-  return apiRequest<StoreSeenRecordPayload>(`/stores/${encodeURIComponent(storeId)}/seen`, {
-    method: 'POST',
-    body: guest ? { guest_token: guest } : {},
-    sendAuthIfAvailable: true,
-  });
+  return apiRequest<StoreSeenRecordPayload>(
+    `/stores/${encodeURIComponent(storeId)}/seen`,
+    {
+      method: "POST",
+      body: guest ? { guest_token: guest } : {},
+      sendAuthIfAvailable: true,
+    },
+  );
 };
 
 /**
@@ -1398,66 +1591,80 @@ export const recordStoreView = async (storeId: string) => {
  */
 export const getMyStoreNotifications = async (params?: { limit?: number }) => {
   const qs = new URLSearchParams();
-  if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
-  const suffix = qs.toString() ? `?${qs.toString()}` : '';
-  const response = await apiRequest<StoreOwnerNotificationsPayload>(`/my/store-notifications${suffix}`, {
-    method: 'GET',
-    requiresAuth: true,
-  });
-  return response.data;
-};
-
-export const markStoreNotificationRead = async (notificationId: number | string) => {
-  const response = await apiRequest<{ id: number; read_at: string | null }>(
-    `/my/store-notifications/${encodeURIComponent(notificationId)}/read`,
+  if (typeof params?.limit === "number") qs.set("limit", String(params.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const response = await apiRequest<StoreOwnerNotificationsPayload>(
+    `/my/store-notifications${suffix}`,
     {
-      method: 'POST',
+      method: "GET",
       requiresAuth: true,
-    }
+    },
   );
   return response.data;
 };
 
-export const deleteStoreNotification = async (notificationId: number | string) => {
+export const markStoreNotificationRead = async (
+  notificationId: number | string,
+) => {
+  const response = await apiRequest<{ id: number; read_at: string | null }>(
+    `/my/store-notifications/${encodeURIComponent(notificationId)}/read`,
+    {
+      method: "POST",
+      requiresAuth: true,
+    },
+  );
+  return response.data;
+};
+
+export const deleteStoreNotification = async (
+  notificationId: number | string,
+) => {
   const response = await apiRequest<{ id: number }>(
     `/my/store-notifications/${encodeURIComponent(notificationId)}`,
     {
-      method: 'DELETE',
+      method: "DELETE",
       requiresAuth: true,
-    }
+    },
   );
   return response.data;
 };
 
 export const getMyFollowNotifications = async (params?: { limit?: number }) => {
   const qs = new URLSearchParams();
-  if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
-  const suffix = qs.toString() ? `?${qs.toString()}` : '';
-  const response = await apiRequest<UserFollowNotificationsPayload>(`/my/follow-notifications${suffix}`, {
-    method: 'GET',
-    requiresAuth: true,
-  });
-  return response.data;
-};
-
-export const markFollowNotificationRead = async (notificationId: number | string) => {
-  const response = await apiRequest<{ id: number; read_at: string | null }>(
-    `/my/follow-notifications/${encodeURIComponent(notificationId)}/read`,
+  if (typeof params?.limit === "number") qs.set("limit", String(params.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const response = await apiRequest<UserFollowNotificationsPayload>(
+    `/my/follow-notifications${suffix}`,
     {
-      method: 'POST',
+      method: "GET",
       requiresAuth: true,
-    }
+    },
   );
   return response.data;
 };
 
-export const deleteFollowNotification = async (notificationId: number | string) => {
+export const markFollowNotificationRead = async (
+  notificationId: number | string,
+) => {
+  const response = await apiRequest<{ id: number; read_at: string | null }>(
+    `/my/follow-notifications/${encodeURIComponent(notificationId)}/read`,
+    {
+      method: "POST",
+      requiresAuth: true,
+    },
+  );
+  return response.data;
+};
+
+export const deleteFollowNotification = async (
+  notificationId: number | string,
+) => {
   const response = await apiRequest<{ id: number }>(
     `/my/follow-notifications/${encodeURIComponent(notificationId)}`,
     {
-      method: 'DELETE',
+      method: "DELETE",
       requiresAuth: true,
-    }
+    },
   );
   return response.data;
 };
@@ -1465,17 +1672,24 @@ export const deleteFollowNotification = async (notificationId: number | string) 
 export const searchAll = async (params: SearchAllParams) => {
   const { query, location, lat, lng, radiusKm, types, limits } = params;
   const queryParams = new URLSearchParams();
-  queryParams.append('q', query);
-  if (location) queryParams.append('location', location);
-  if (typeof lat === 'number') queryParams.append('lat', lat.toString());
-  if (typeof lng === 'number') queryParams.append('lng', lng.toString());
-  if (typeof radiusKm === 'number') queryParams.append('radius_km', radiusKm.toString());
-  if (Array.isArray(types) && types.length) queryParams.append('types', types.join(','));
-  if (limits?.stores) queryParams.append('store_limit', limits.stores.toString());
-  if (limits?.products) queryParams.append('product_limit', limits.products.toString());
-  if (limits?.services) queryParams.append('service_limit', limits.services.toString());
+  queryParams.append("q", query);
+  if (location) queryParams.append("location", location);
+  if (typeof lat === "number") queryParams.append("lat", lat.toString());
+  if (typeof lng === "number") queryParams.append("lng", lng.toString());
+  if (typeof radiusKm === "number")
+    queryParams.append("radius_km", radiusKm.toString());
+  if (Array.isArray(types) && types.length)
+    queryParams.append("types", types.join(","));
+  if (limits?.stores)
+    queryParams.append("store_limit", limits.stores.toString());
+  if (limits?.products)
+    queryParams.append("product_limit", limits.products.toString());
+  if (limits?.services)
+    queryParams.append("service_limit", limits.services.toString());
 
-  const response = await apiRequest<BackendSearchResponse>(`/search?${queryParams.toString()}`);
+  const response = await apiRequest<BackendSearchResponse>(
+    `/search?${queryParams.toString()}`,
+  );
   const payload = response.data;
 
   const normalizedStores = Array.isArray(payload.results?.stores)
@@ -1484,12 +1698,16 @@ export const searchAll = async (params: SearchAllParams) => {
   const normalizedProducts = Array.isArray(payload.results?.products)
     ? payload.results.products
         .filter((product) => product?.store)
-        .map((product) => normalizeProduct(product, product.store as BackendStore))
+        .map((product) =>
+          normalizeProduct(product, product.store as BackendStore),
+        )
     : [];
   const normalizedServices = Array.isArray(payload.results?.services)
     ? payload.results.services
         .filter((service) => service?.store)
-        .map((service) => normalizeService(service, service.store as BackendStore))
+        .map((service) =>
+          normalizeService(service, service.store as BackendStore),
+        )
     : [];
 
   return {
@@ -1498,9 +1716,12 @@ export const searchAll = async (params: SearchAllParams) => {
     lat: payload.lat,
     lng: payload.lng,
     radiusKm: payload.radius_km,
-    types: Array.isArray(payload.types) && payload.types.length
-      ? (payload.types as Array<'stores' | 'products' | 'services'>)
-      : (['stores', 'products', 'services'] as Array<'stores' | 'products' | 'services'>),
+    types:
+      Array.isArray(payload.types) && payload.types.length
+        ? (payload.types as Array<"stores" | "products" | "services">)
+        : (["stores", "products", "services"] as Array<
+            "stores" | "products" | "services"
+          >),
     stores: normalizedStores,
     products: normalizedProducts,
     services: normalizedServices,
@@ -1512,23 +1733,26 @@ export const updateAccountPassword = async (payload: {
   password: string;
   password_confirmation: string;
 }) => {
-  await apiRequest<unknown>('/auth/password', {
-    method: 'POST',
+  await apiRequest<unknown>("/auth/password", {
+    method: "POST",
     body: payload,
     requiresAuth: true,
   });
 };
 
 export const updateStore = async (payload: UpdateStorePayload) => {
-  const response = await apiRequest<{ store: BackendStore; business_type?: string }>(`/store/${payload.id}`, {
-    method: 'PUT',
+  const response = await apiRequest<{
+    store: BackendStore;
+    business_type?: string;
+  }>(`/store/${payload.id}`, {
+    method: "PUT",
     body: payload,
     requiresAuth: true,
   });
 
   const inner = response.data?.store;
-  if (!inner || typeof inner !== 'object') {
-    throw new ApiError('Invalid store update response', 502);
+  if (!inner || typeof inner !== "object") {
+    throw new ApiError("Invalid store update response", 502);
   }
 
   let normalizedStore = normalizeStore(inner as BackendStore);
@@ -1540,9 +1764,38 @@ export const updateStore = async (payload: UpdateStorePayload) => {
   return { store: normalizedStore };
 };
 
+export const grantLifetimeAccess = async (
+  storeId: number | string,
+): Promise<Store> => {
+  const response = await apiRequest<{ store: BackendStore }>(
+    `/store/${storeId}/grant-lifetime-access`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to grant lifetime access");
+  }
+
+  const inner = await response.json();
+
+  if (!inner.store) {
+    throw new Error("Store data not found in response");
+  }
+
+  const normalizedStore = normalizeStore(inner as BackendStore);
+
+  await purgeStoresCatalogCacheClient();
+  dispatchStoreProfileRefresh();
+
+  return normalizedStore;
+};
+
 export const deleteStore = async (storeId: number | string) => {
   await apiRequest(`/store/${storeId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     requiresAuth: true,
   });
   await purgeStoresCatalogCacheClient();
@@ -1550,8 +1803,8 @@ export const deleteStore = async (storeId: number | string) => {
 };
 
 export const addProduct = async (payload: AddProductPayload) => {
-  const response = await apiRequest<BackendProduct>('/product', {
-    method: 'POST',
+  const response = await apiRequest<BackendProduct>("/product", {
+    method: "POST",
     body: payload,
     requiresAuth: true,
   });
@@ -1563,9 +1816,9 @@ export const addProduct = async (payload: AddProductPayload) => {
     product: normalizeProduct(response.data, {
       id: Number(response.data.store_id ?? 0),
       user_id: 0,
-      name: '',
-      slug: '',
-      category: { id: 0, name: 'General', business_type: 'product' },
+      name: "",
+      slug: "",
+      category: { id: 0, name: "General", business_type: "product" },
       is_active: true,
       is_verified: false,
     } as BackendStore),
@@ -1587,35 +1840,45 @@ export const getAllStores = async (params?: {
   paid_subscription?: boolean;
 }) => {
   const queryParams = new URLSearchParams();
-  if (params?.search) queryParams.append('search', params.search);
-  if (params?.category) queryParams.append('category', params.category);
-  if (params?.location) queryParams.append('location', params.location);
-  if (params?.only_verified) queryParams.append('only_verified', '1');
-  if (params?.only_boosted) queryParams.append('only_boosted', '1');
-  if (params?.limit) queryParams.append('limit', params.limit.toString());
-  if (typeof params?.lat === 'number') queryParams.append('lat', params.lat.toString());
-  if (typeof params?.lng === 'number') queryParams.append('lng', params.lng.toString());
-  if (typeof params?.radiusKm === 'number') queryParams.append('radius_km', params.radiusKm.toString());
-  if (params?.include_inactive) queryParams.append('include_inactive', '1');
-  if (params?.paid_subscription) queryParams.append('paid_subscription', '1');
+  if (params?.search) queryParams.append("search", params.search);
+  if (params?.category) queryParams.append("category", params.category);
+  if (params?.location) queryParams.append("location", params.location);
+  if (params?.only_verified) queryParams.append("only_verified", "1");
+  if (params?.only_boosted) queryParams.append("only_boosted", "1");
+  if (params?.limit) queryParams.append("limit", params.limit.toString());
+  if (typeof params?.lat === "number")
+    queryParams.append("lat", params.lat.toString());
+  if (typeof params?.lng === "number")
+    queryParams.append("lng", params.lng.toString());
+  if (typeof params?.radiusKm === "number")
+    queryParams.append("radius_km", params.radiusKm.toString());
+  if (params?.include_inactive) queryParams.append("include_inactive", "1");
+  if (params?.paid_subscription) queryParams.append("paid_subscription", "1");
 
   const qs = queryParams.toString();
 
   /** Hit Laravel like `/categories`, not Next `/api/stores` — Redis there has no TTL and can show stale rows from another DB. */
-  const path = qs ? `/stores?${qs}` : '/stores';
+  const path = qs ? `/stores?${qs}` : "/stores";
   try {
-    const response = await apiRequest<BackendStore[]>(path, { sendAuthIfAvailable: true });
+    const response = await apiRequest<BackendStore[]>(path, {
+      sendAuthIfAvailable: true,
+    });
 
     const raw = response.data as unknown;
     const rows: unknown[] = Array.isArray(raw)
       ? raw
-      : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)
-        ? ((raw as { data: unknown[] }).data)
+      : raw &&
+          typeof raw === "object" &&
+          Array.isArray((raw as { data?: unknown }).data)
+        ? (raw as { data: unknown[] }).data
         : [];
 
     return rows.map(adaptStoreListEntry);
   } catch (e) {
-    console.error('[getAllStores] Laravel /stores failed — check NEXT_PUBLIC_API_BASE_URL and CORS', e);
+    console.error(
+      "[getAllStores] Laravel /stores failed — check NEXT_PUBLIC_API_BASE_URL and CORS",
+      e,
+    );
     return [];
   }
 };
@@ -1623,46 +1886,53 @@ export const getAllStores = async (params?: {
 export type TrendingProductRailItem = Product & { storeUsername?: string };
 
 /** Latest active products across stores (home trending rail). */
-export const getTrendingProducts = async (limit = 24): Promise<TrendingProductRailItem[]> => {
+export const getTrendingProducts = async (
+  limit = 24,
+): Promise<TrendingProductRailItem[]> => {
   try {
-    const response = await apiRequest<unknown>(`/products/trending?limit=${limit}`, {
-      sendAuthIfAvailable: true,
-    });
+    const response = await apiRequest<unknown>(
+      `/products/trending?limit=${limit}`,
+      {
+        sendAuthIfAvailable: true,
+      },
+    );
     const raw = response.data as unknown;
     const rows: unknown[] = Array.isArray(raw) ? raw : [];
     const out: TrendingProductRailItem[] = [];
     for (const row of rows) {
       const r = row as BackendProduct & { store?: BackendStore };
       const st = r.store;
-      if (!st || typeof st !== 'object') continue;
+      if (!st || typeof st !== "object") continue;
       const product = normalizeProduct(r, st);
-      const un = String(st.slug ?? (st as { username?: string }).username ?? '').trim();
+      const un = String(
+        st.slug ?? (st as { username?: string }).username ?? "",
+      ).trim();
       out.push({ ...product, storeUsername: un || undefined });
     }
     return out;
   } catch (e) {
-    console.warn('[getTrendingProducts]', e);
+    console.warn("[getTrendingProducts]", e);
     return [];
   }
 };
 
 /** Stores the current viewer follows (logged-in or guest_token). Not cached. */
 export const getFollowedStores = async (): Promise<Store[]> => {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === "undefined") return [];
   try {
-    const base = getApiRequestBaseUrl().replace(/\/+$/, '');
+    const base = getApiRequestBaseUrl().replace(/\/+$/, "");
     const qs = new URLSearchParams();
     const guest = getOrCreateStoreEngagementGuestToken();
-    if (guest) qs.set('guest_token', guest);
+    if (guest) qs.set("guest_token", guest);
     ensureAuthToken();
-    const headers: Record<string, string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { Accept: "application/json" };
     if (authToken) {
       headers[AUTH_TOKEN_HEADER] = `Bearer ${authToken}`;
     }
     const res = await fetch(`${base}/stores/following?${qs.toString()}`, {
-      method: 'GET',
+      method: "GET",
       headers,
-      cache: 'no-store',
+      cache: "no-store",
     });
     if (!res.ok) {
       return [];
@@ -1677,23 +1947,24 @@ export const getFollowedStores = async (): Promise<Store[]> => {
 };
 
 export const getBoostPlans = async (): Promise<BoostPlan[]> => {
-  const response = await apiRequest<BackendBoostPlan[]>('/boost-plans', {
+  const response = await apiRequest<BackendBoostPlan[]>("/boost-plans", {
     requiresAuth: true,
   });
 
   return response.data.map((plan) => normalizeBoostPlan(plan));
 };
 
-export const getAdminDashboardStats = async (): Promise<AdminDashboardStats> => {
-  const response = await apiRequest<AdminDashboardStats>('/admin/dashboard', {
-    requiresAuth: true,
-  });
+export const getAdminDashboardStats =
+  async (): Promise<AdminDashboardStats> => {
+    const response = await apiRequest<AdminDashboardStats>("/admin/dashboard", {
+      requiresAuth: true,
+    });
 
-  return response.data;
-};
+    return response.data;
+  };
 
 export const getAllBoostPlans = async (): Promise<BoostPlan[]> => {
-  const response = await apiRequest<BackendBoostPlan[]>('/boost-plans/all', {
+  const response = await apiRequest<BackendBoostPlan[]>("/boost-plans/all", {
     requiresAuth: true,
   });
 
@@ -1701,8 +1972,8 @@ export const getAllBoostPlans = async (): Promise<BoostPlan[]> => {
 };
 
 export const createBoostPlan = async (payload: Partial<BackendBoostPlan>) => {
-  const response = await apiRequest<BackendBoostPlan>('/boost-plans', {
-    method: 'POST',
+  const response = await apiRequest<BackendBoostPlan>("/boost-plans", {
+    method: "POST",
     body: payload,
     requiresAuth: true,
   });
@@ -1710,64 +1981,79 @@ export const createBoostPlan = async (payload: Partial<BackendBoostPlan>) => {
   return normalizeBoostPlan(response.data);
 };
 
-export const updateBoostPlan = async (planId: number | string, payload: Partial<BackendBoostPlan>) => {
-  const response = await apiRequest<BackendBoostPlan>(`/boost-plans/${planId}`, {
-    method: 'PUT',
-    body: payload,
-    requiresAuth: true,
-  });
+export const updateBoostPlan = async (
+  planId: number | string,
+  payload: Partial<BackendBoostPlan>,
+) => {
+  const response = await apiRequest<BackendBoostPlan>(
+    `/boost-plans/${planId}`,
+    {
+      method: "PUT",
+      body: payload,
+      requiresAuth: true,
+    },
+  );
 
   return normalizeBoostPlan(response.data);
 };
 
 export const deleteBoostPlan = async (planId: number | string) => {
   await apiRequest(`/boost-plans/${planId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     requiresAuth: true,
   });
 };
 
 export const activateStoreBoost = async (
   storeId: number | string,
-  payload: { planId: number | string; startsAt?: string }
+  payload: { planId: number | string; startsAt?: string },
 ): Promise<StoreBoost> => {
-  const response = await apiRequest<BackendStoreBoost>(`/stores/${storeId}/boosts`, {
-    method: 'POST',
-    body: {
-      plan_id: payload.planId,
-      ...(payload.startsAt ? { starts_at: payload.startsAt } : {}),
+  const response = await apiRequest<BackendStoreBoost>(
+    `/stores/${storeId}/boosts`,
+    {
+      method: "POST",
+      body: {
+        plan_id: payload.planId,
+        ...(payload.startsAt ? { starts_at: payload.startsAt } : {}),
+      },
+      requiresAuth: true,
     },
-    requiresAuth: true,
-  });
+  );
 
   return normalizeStoreBoost(response.data);
 };
 
 export const getStoreBoostOverview = async (storeId: number | string) => {
-  const response = await apiRequest<{ store: BackendStore; activeBoost: BackendStoreBoost | null }>(
-    `/stores/${storeId}/boosts`,
-    {
-      requiresAuth: true,
-    }
-  );
+  const response = await apiRequest<{
+    store: BackendStore;
+    activeBoost: BackendStoreBoost | null;
+  }>(`/stores/${storeId}/boosts`, {
+    requiresAuth: true,
+  });
 
   return {
     store: normalizeStore(response.data.store),
-    activeBoost: response.data.activeBoost ? normalizeStoreBoost(response.data.activeBoost) : null,
+    activeBoost: response.data.activeBoost
+      ? normalizeStoreBoost(response.data.activeBoost)
+      : null,
   };
 };
 
 export const getStoreBoosts = async (): Promise<StoreBoost[]> => {
-  const response = await apiRequest<BackendStoreBoost[]>('/boosts', {
+  const response = await apiRequest<BackendStoreBoost[]>("/boosts", {
     requiresAuth: true,
   });
 
-  return response.data.map((boost) => normalizeStoreBoost(boost, { includeStore: true }));
+  return response.data.map((boost) =>
+    normalizeStoreBoost(boost, { includeStore: true }),
+  );
 };
 
-export const cancelBoost = async (boostId: number | string): Promise<StoreBoost> => {
+export const cancelBoost = async (
+  boostId: number | string,
+): Promise<StoreBoost> => {
   const response = await apiRequest<BackendStoreBoost>(`/boosts/${boostId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     requiresAuth: true,
   });
 
@@ -1789,7 +2075,9 @@ export const getProductsByStore = async (storeId: number | string) => {
   const productRows: BackendProduct[] = [];
 
   do {
-    const response = await apiRequest<BackendProduct[] | LaravelProductPaginator>(`/products/${storeId}?page=${page}&per_page=${perPage}`);
+    const response = await apiRequest<
+      BackendProduct[] | LaravelProductPaginator
+    >(`/products/${storeId}?page=${page}&per_page=${perPage}`);
     const data = response.data as unknown;
     const pageRows = Array.isArray(data)
       ? data
@@ -1802,8 +2090,15 @@ export const getProductsByStore = async (storeId: number | string) => {
             : [];
 
     productRows.push(...pageRows);
-    if (data && typeof data === 'object' && typeof (data as { last_page?: unknown }).last_page === 'number') {
-      lastPage = Math.max(1, Number((data as { last_page?: number }).last_page ?? 1));
+    if (
+      data &&
+      typeof data === "object" &&
+      typeof (data as { last_page?: unknown }).last_page === "number"
+    ) {
+      lastPage = Math.max(
+        1,
+        Number((data as { last_page?: number }).last_page ?? 1),
+      );
       page += 1;
     } else {
       break;
@@ -1814,12 +2109,12 @@ export const getProductsByStore = async (storeId: number | string) => {
     normalizeProduct(product, {
       id: Number(storeId),
       user_id: 0,
-      name: '',
-      slug: '',
-      category: { id: 0, name: 'General', business_type: 'product' },
+      name: "",
+      slug: "",
+      category: { id: 0, name: "General", business_type: "product" },
       is_active: true,
       is_verified: false,
-    } as BackendStore)
+    } as BackendStore),
   );
 };
 
@@ -1837,32 +2132,36 @@ export const getServicesByStore = async (storeId: number | string) => {
     normalizeService(service, {
       id: Number(storeId),
       user_id: 0,
-      name: '',
-      slug: '',
-      category: { id: 0, name: 'General', business_type: 'service' },
+      name: "",
+      slug: "",
+      category: { id: 0, name: "General", business_type: "service" },
       is_active: true,
       is_verified: false,
-    } as BackendStore)
+    } as BackendStore),
   );
 };
 
 export const getServiceById = async (serviceId: number | string) => {
-  const response = await apiRequest<BackendService & { store?: BackendStore }>(`/service/${serviceId}`);
+  const response = await apiRequest<BackendService & { store?: BackendStore }>(
+    `/service/${serviceId}`,
+  );
 
   if (!response.data) {
-    throw new ApiError('Service not found', 404);
+    throw new ApiError("Service not found", 404);
   }
 
   const service = response.data;
-  const store = service.store || {
-    id: Number(service.store_id ?? 0),
-    user_id: 0,
-    name: '',
-    slug: '',
-    category: { id: 0, name: 'General', business_type: 'service' },
-    is_active: true,
-    is_verified: false,
-  } as BackendStore;
+  const store =
+    service.store ||
+    ({
+      id: Number(service.store_id ?? 0),
+      user_id: 0,
+      name: "",
+      slug: "",
+      category: { id: 0, name: "General", business_type: "service" },
+      is_active: true,
+      is_verified: false,
+    } as BackendStore);
 
   return {
     service: normalizeService(service, store),
@@ -1876,35 +2175,43 @@ const defaultProductCheckout = (): ProductCheckoutPublic => ({
   paymentQrUrl: null,
 });
 
-function normalizeProductCheckout(raw: BackendProductCheckoutPayload | null | undefined): ProductCheckoutPublic {
-  if (!raw || typeof raw !== 'object') return defaultProductCheckout();
+function normalizeProductCheckout(
+  raw: BackendProductCheckoutPayload | null | undefined,
+): ProductCheckoutPublic {
+  if (!raw || typeof raw !== "object") return defaultProductCheckout();
   const url = raw.payment_qr_url;
   return {
     onlinePaymentAvailable: Boolean(raw.online_payment_available),
     qrPaymentAvailable: Boolean(raw.qr_payment_available),
-    paymentQrUrl: typeof url === 'string' && url.trim() !== '' ? url.trim() : null,
+    paymentQrUrl:
+      typeof url === "string" && url.trim() !== "" ? url.trim() : null,
   };
 }
 
 export const getProductById = async (productId: number | string) => {
-  const response = await apiRequest<BackendProduct & { store?: BackendStore }>(`/product/${productId}`, {
-    sendAuthIfAvailable: true,
-  });
+  const response = await apiRequest<BackendProduct & { store?: BackendStore }>(
+    `/product/${productId}`,
+    {
+      sendAuthIfAvailable: true,
+    },
+  );
 
   if (!response.data) {
-    throw new ApiError('Product not found', 404);
+    throw new ApiError("Product not found", 404);
   }
 
   const product = response.data;
-  const store = product.store || {
-    id: Number(product.store_id ?? 0),
-    user_id: 0,
-    name: '',
-    slug: '',
-    category: { id: 0, name: 'General', business_type: 'product' },
-    is_active: true,
-    is_verified: false,
-  } as BackendStore;
+  const store =
+    product.store ||
+    ({
+      id: Number(product.store_id ?? 0),
+      user_id: 0,
+      name: "",
+      slug: "",
+      category: { id: 0, name: "General", business_type: "product" },
+      is_active: true,
+      is_verified: false,
+    } as BackendStore);
 
   return {
     product: normalizeProduct(product, store),
@@ -1943,20 +2250,20 @@ export const createProductCheckoutRazorpayOrder = async (
     body.quantity = options.quantity;
   }
   if (!options?.buyer) {
-    throw new ApiError('Buyer details are required to start checkout.', 400);
+    throw new ApiError("Buyer details are required to start checkout.", 400);
   }
   body.buyer = options.buyer;
   const response = await apiRequest<ProductCheckoutRazorpayOrderData>(
     `/product/${productId}/checkout/razorpay-order`,
     {
-      method: 'POST',
+      method: "POST",
       body,
       sendAuthIfAvailable: true,
     },
   );
   const data = response.data;
   if (!data?.razorpay_order_id) {
-    throw new ApiError('Could not start payment.', 502, data);
+    throw new ApiError("Could not start payment.", 502, data);
   }
   return data;
 };
@@ -1970,7 +2277,7 @@ export const verifyProductCheckoutRazorpayPayment = async (
   },
 ): Promise<void> => {
   await apiRequest(`/product/${productId}/checkout/razorpay-verify`, {
-    method: 'POST',
+    method: "POST",
     body: payload,
     sendAuthIfAvailable: true,
   });
@@ -2002,7 +2309,12 @@ export type StorePurchaseInquiryRow = {
   paid_at: string | null;
   created_at: string;
   updated_at: string;
-  product?: { id: number; title: string; image?: string | null; price?: number } | null;
+  product?: {
+    id: number;
+    title: string;
+    image?: string | null;
+    price?: number;
+  } | null;
 };
 
 export type StorePurchaseInquiriesResponse = {
@@ -2026,55 +2338,59 @@ export const getStorePurchaseInquiries = async (
   );
   const d = response.data;
   if (!d?.data || !d.pagination) {
-    throw new ApiError('Invalid purchase inquiries response', 502, d);
+    throw new ApiError("Invalid purchase inquiries response", 502, d);
   }
   return d;
 };
 
 const buildQuery = (params?: Record<string, string | number | undefined>) => {
   const query = new URLSearchParams();
-  if (!params) return '';
+  if (!params) return "";
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
     query.append(key, String(value));
   });
   const queryString = query.toString();
-  return queryString ? `?${queryString}` : '';
+  return queryString ? `?${queryString}` : "";
 };
 
 export const getProductReviews = async (
   productId: number | string,
-  params?: ReviewListParams
+  params?: ReviewListParams,
 ): Promise<ReviewListResponse> => {
   const query = buildQuery({ page: params?.page, per_page: params?.perPage });
-  const response = await apiRequest<BackendReviewListResponse>(`/product/${productId}/reviews${query}`);
+  const response = await apiRequest<BackendReviewListResponse>(
+    `/product/${productId}/reviews${query}`,
+  );
   return normalizeReviewListResponse(response.data);
 };
 
 export const getStoreReviews = async (
   storeId: number | string,
-  params?: ReviewListParams
+  params?: ReviewListParams,
 ): Promise<ReviewListResponse> => {
   const query = buildQuery({ page: params?.page, per_page: params?.perPage });
-  const response = await apiRequest<BackendReviewListResponse>(`/store/${storeId}/reviews${query}`);
+  const response = await apiRequest<BackendReviewListResponse>(
+    `/store/${storeId}/reviews${query}`,
+  );
   return normalizeReviewListResponse(response.data);
 };
 
 export const submitProductReview = async (
   productId: number | string,
-  payload: ReviewSubmitPayload
-): Promise<{ review: Review; summary: ReviewListResponse['summary'] }> => {
-  const response = await apiRequest<{ review: BackendReview; summary: { [key: string]: number } }>(
-    `/product/${productId}/reviews`,
-    {
-      method: 'POST',
-      body: {
-        rating: payload.rating,
-        comment: payload.comment,
-      },
-      requiresAuth: true,
-    }
-  );
+  payload: ReviewSubmitPayload,
+): Promise<{ review: Review; summary: ReviewListResponse["summary"] }> => {
+  const response = await apiRequest<{
+    review: BackendReview;
+    summary: { [key: string]: number };
+  }>(`/product/${productId}/reviews`, {
+    method: "POST",
+    body: {
+      rating: payload.rating,
+      comment: payload.comment,
+    },
+    requiresAuth: true,
+  });
 
   return {
     review: normalizeReview(response.data.review),
@@ -2087,19 +2403,19 @@ export const submitProductReview = async (
 
 export const submitStoreReview = async (
   storeId: number | string,
-  payload: ReviewSubmitPayload
-): Promise<{ review: Review; summary: ReviewListResponse['summary'] }> => {
-  const response = await apiRequest<{ review: BackendReview; summary: { [key: string]: number } }>(
-    `/store/${storeId}/reviews`,
-    {
-      method: 'POST',
-      body: {
-        rating: payload.rating,
-        comment: payload.comment,
-      },
-      requiresAuth: true,
-    }
-  );
+  payload: ReviewSubmitPayload,
+): Promise<{ review: Review; summary: ReviewListResponse["summary"] }> => {
+  const response = await apiRequest<{
+    review: BackendReview;
+    summary: { [key: string]: number };
+  }>(`/store/${storeId}/reviews`, {
+    method: "POST",
+    body: {
+      rating: payload.rating,
+      comment: payload.comment,
+    },
+    requiresAuth: true,
+  });
 
   return {
     review: normalizeReview(response.data.review),
@@ -2114,7 +2430,9 @@ export const handleApiError = (error: unknown) => {
   if (isApiError(error)) {
     throw error;
   }
-  throw new ApiError(error instanceof Error ? error.message : 'Unexpected error');
+  throw new ApiError(
+    error instanceof Error ? error.message : "Unexpected error",
+  );
 };
 
 const mapSubscriptionPlanRow = (plan: any): SubscriptionPlan => ({
@@ -2124,11 +2442,17 @@ const mapSubscriptionPlanRow = (plan: any): SubscriptionPlan => ({
   price: Number(plan.price),
   billingCycle: plan.billing_cycle,
   durationDays:
-    plan.duration_days != null && plan.duration_days !== '' ? Number(plan.duration_days) : undefined,
+    plan.duration_days != null && plan.duration_days !== ""
+      ? Number(plan.duration_days)
+      : undefined,
   displayOrder:
-    plan.display_order != null && plan.display_order !== '' ? Number(plan.display_order) : null,
+    plan.display_order != null && plan.display_order !== ""
+      ? Number(plan.display_order)
+      : null,
   billingDiscountTier: plan.billing_discount_tier
-    ? (plan.billing_discount_tier as NonNullable<SubscriptionPlan['billingDiscountTier']>)
+    ? (plan.billing_discount_tier as NonNullable<
+        SubscriptionPlan["billingDiscountTier"]
+      >)
     : undefined,
   maxProducts: Number(plan.max_products),
   isPopular: Boolean(plan.is_popular),
@@ -2146,7 +2470,9 @@ export const getSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
 };
 
 /** Active + inactive rows — same catalog the admin manages; for dashboard subscription page. */
-export const getSubscriptionPlanCatalog = async (): Promise<SubscriptionPlan[]> => {
+export const getSubscriptionPlanCatalog = async (): Promise<
+  SubscriptionPlan[]
+> => {
   const response = await apiRequest<any[]>("/subscription-plans/catalog", {
     requiresAuth: true,
   });
@@ -2154,7 +2480,9 @@ export const getSubscriptionPlanCatalog = async (): Promise<SubscriptionPlan[]> 
   return response.data.map(mapSubscriptionPlanRow);
 };
 
-export const getAllSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
+export const getAllSubscriptionPlans = async (): Promise<
+  SubscriptionPlan[]
+> => {
   const response = await apiRequest<any[]>("/subscription-plans/all", {
     requiresAuth: true,
   });
@@ -2163,8 +2491,8 @@ export const getAllSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => 
 };
 
 export const createSubscriptionPlan = async (payload: Partial<any>) => {
-  const response = await apiRequest<any>('/subscription-plans', {
-    method: 'POST',
+  const response = await apiRequest<any>("/subscription-plans", {
+    method: "POST",
     body: payload,
     requiresAuth: true,
   });
@@ -2175,19 +2503,29 @@ export const createSubscriptionPlan = async (payload: Partial<any>) => {
     slug: response.data.slug,
     price: Number(response.data.price),
     billingCycle: response.data.billing_cycle,
-    durationDays: response.data.duration_days ? Number(response.data.duration_days) : undefined,
-    displayOrder: response.data.display_order != null ? Number(response.data.display_order) : null,
+    durationDays: response.data.duration_days
+      ? Number(response.data.duration_days)
+      : undefined,
+    displayOrder:
+      response.data.display_order != null
+        ? Number(response.data.display_order)
+        : null,
     maxProducts: Number(response.data.max_products),
     isPopular: Boolean(response.data.is_popular),
     isActive: Boolean(response.data.is_active),
-    features: Array.isArray(response.data.features) ? response.data.features : [],
-    description: response.data.description || '',
+    features: Array.isArray(response.data.features)
+      ? response.data.features
+      : [],
+    description: response.data.description || "",
   };
 };
 
-export const updateSubscriptionPlan = async (planId: number | string, payload: Partial<any>) => {
+export const updateSubscriptionPlan = async (
+  planId: number | string,
+  payload: Partial<any>,
+) => {
   const response = await apiRequest<any>(`/subscription-plans/${planId}`, {
-    method: 'PUT',
+    method: "PUT",
     body: payload,
     requiresAuth: true,
   });
@@ -2198,28 +2536,38 @@ export const updateSubscriptionPlan = async (planId: number | string, payload: P
     slug: response.data.slug,
     price: Number(response.data.price),
     billingCycle: response.data.billing_cycle,
-    durationDays: response.data.duration_days ? Number(response.data.duration_days) : undefined,
-    displayOrder: response.data.display_order != null ? Number(response.data.display_order) : null,
+    durationDays: response.data.duration_days
+      ? Number(response.data.duration_days)
+      : undefined,
+    displayOrder:
+      response.data.display_order != null
+        ? Number(response.data.display_order)
+        : null,
     maxProducts: Number(response.data.max_products),
     isPopular: Boolean(response.data.is_popular),
     isActive: Boolean(response.data.is_active),
-    features: Array.isArray(response.data.features) ? response.data.features : [],
-    description: response.data.description || '',
+    features: Array.isArray(response.data.features)
+      ? response.data.features
+      : [],
+    description: response.data.description || "",
   };
 };
 
 export const deleteSubscriptionPlan = async (planId: number | string) => {
   await apiRequest(`/subscription-plans/${planId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     requiresAuth: true,
   });
 };
 
 /** Super admin: global free-trial length for new stores (days). */
 export const getAdminFreeTrialDays = async (): Promise<number> => {
-  const response = await apiRequest<{ free_trial_days: number }>('/admin/settings/free-trial', {
-    requiresAuth: true,
-  });
+  const response = await apiRequest<{ free_trial_days: number }>(
+    "/admin/settings/free-trial",
+    {
+      requiresAuth: true,
+    },
+  );
   const raw = response.data as { free_trial_days?: number };
   const n = Number(raw?.free_trial_days);
   const days = Number.isFinite(n) && n > 0 ? n : DEFAULT_FREE_TRIAL_DAYS;
@@ -2227,12 +2575,17 @@ export const getAdminFreeTrialDays = async (): Promise<number> => {
   return days;
 };
 
-export const updateAdminFreeTrialDays = async (freeTrialDays: number): Promise<number> => {
-  const response = await apiRequest<{ free_trial_days: number }>('/admin/settings/free-trial', {
-    method: 'PUT',
-    body: { free_trial_days: freeTrialDays },
-    requiresAuth: true,
-  });
+export const updateAdminFreeTrialDays = async (
+  freeTrialDays: number,
+): Promise<number> => {
+  const response = await apiRequest<{ free_trial_days: number }>(
+    "/admin/settings/free-trial",
+    {
+      method: "PUT",
+      body: { free_trial_days: freeTrialDays },
+      requiresAuth: true,
+    },
+  );
   const raw = response.data as { free_trial_days?: number };
   const n = Number(raw?.free_trial_days);
   const days = Number.isFinite(n) && n > 0 ? n : DEFAULT_FREE_TRIAL_DAYS;
@@ -2242,56 +2595,77 @@ export const updateAdminFreeTrialDays = async (freeTrialDays: number): Promise<n
 };
 
 const clampAddonRupees = (v: unknown): number => {
-  const n = typeof v === 'number' ? v : Number(v);
+  const n = typeof v === "number" ? v : Number(v);
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(99_999_999, Math.floor(n));
 };
 
-const parseSubscriptionAddonPayload = (raw: unknown): SubscriptionAddonCharges => {
-  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+const parseSubscriptionAddonPayload = (
+  raw: unknown,
+): SubscriptionAddonCharges => {
+  const o =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
-    payment_gateway_integration_inr: clampAddonRupees(o.payment_gateway_integration_inr),
+    payment_gateway_integration_inr: clampAddonRupees(
+      o.payment_gateway_integration_inr,
+    ),
     qr_code_inr: clampAddonRupees(o.qr_code_inr),
     payment_gateway_help_inr: clampAddonRupees(o.payment_gateway_help_inr),
   };
 };
 
-const parseSubscriptionCheckoutPricingPayload = (raw: unknown): SubscriptionCheckoutPricing => ({
+const parseSubscriptionCheckoutPricingPayload = (
+  raw: unknown,
+): SubscriptionCheckoutPricing => ({
   ...parseSubscriptionAddonPayload(raw),
   ...parseSubscriptionBillingDiscountsPayload(raw),
 });
 
 /** Super admin: global subscription checkout add-ons (₹). */
-export const getAdminSubscriptionAddonCharges = async (): Promise<SubscriptionAddonCharges> => {
-  const response = await apiRequest<SubscriptionAddonCharges>('/admin/settings/subscription-addons', {
-    requiresAuth: true,
-  });
-  return parseSubscriptionAddonPayload(response.data);
-};
+export const getAdminSubscriptionAddonCharges =
+  async (): Promise<SubscriptionAddonCharges> => {
+    const response = await apiRequest<SubscriptionAddonCharges>(
+      "/admin/settings/subscription-addons",
+      {
+        requiresAuth: true,
+      },
+    );
+    return parseSubscriptionAddonPayload(response.data);
+  };
 
 export const updateAdminSubscriptionAddonCharges = async (
-  charges: SubscriptionAddonCharges
+  charges: SubscriptionAddonCharges,
 ): Promise<SubscriptionAddonCharges> => {
-  const response = await apiRequest<SubscriptionAddonCharges>('/admin/settings/subscription-addons', {
-    method: 'PUT',
-    body: {
-      payment_gateway_integration_inr: clampAddonRupees(charges.payment_gateway_integration_inr),
-      qr_code_inr: clampAddonRupees(charges.qr_code_inr),
-      payment_gateway_help_inr: clampAddonRupees(charges.payment_gateway_help_inr),
+  const response = await apiRequest<SubscriptionAddonCharges>(
+    "/admin/settings/subscription-addons",
+    {
+      method: "PUT",
+      body: {
+        payment_gateway_integration_inr: clampAddonRupees(
+          charges.payment_gateway_integration_inr,
+        ),
+        qr_code_inr: clampAddonRupees(charges.qr_code_inr),
+        payment_gateway_help_inr: clampAddonRupees(
+          charges.payment_gateway_help_inr,
+        ),
+      },
+      requiresAuth: true,
     },
-    requiresAuth: true,
-  });
+  );
   return parseSubscriptionAddonPayload(response.data);
 };
 
 const clampPercent0to100 = (v: unknown): number => {
-  const n = typeof v === 'number' ? v : Number(v);
+  const n = typeof v === "number" ? v : Number(v);
   if (!Number.isFinite(n)) return 0;
   return Math.min(100, Math.max(0, Math.floor(n)));
 };
 
-const parseSubscriptionBillingDiscountsPayload = (raw: unknown): SubscriptionBillingDiscounts => {
-  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+const parseSubscriptionBillingDiscountsPayload = (
+  raw: unknown,
+): SubscriptionBillingDiscounts => {
+  const o =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
     discount_1_month_pct: clampPercent0to100(o.discount_1_month_pct),
     discount_3_months_pct: clampPercent0to100(o.discount_3_months_pct),
@@ -2300,23 +2674,27 @@ const parseSubscriptionBillingDiscountsPayload = (raw: unknown): SubscriptionBil
 };
 
 const requireBillingDiscountsEnvelope = (
-  response: ApiEnvelope<SubscriptionBillingDiscounts>
+  response: ApiEnvelope<SubscriptionBillingDiscounts>,
 ): SubscriptionBillingDiscounts => {
   const raw = response.data;
-  if (raw === null || typeof raw !== 'object') {
+  if (raw === null || typeof raw !== "object") {
     throw new ApiError(
-      'Server returned no billing-discount data. Use the Laravel API host that has the latest backend code, and open the MySQL database named in that server’s DB_DATABASE (not a different DB with a similar name).',
+      "Server returned no billing-discount data. Use the Laravel API host that has the latest backend code, and open the MySQL database named in that server’s DB_DATABASE (not a different DB with a similar name).",
       502,
-      response
+      response,
     );
   }
   const o = raw as unknown as Record<string, unknown>;
-  for (const k of ['discount_1_month_pct', 'discount_3_months_pct', 'discount_1_year_pct'] as const) {
+  for (const k of [
+    "discount_1_month_pct",
+    "discount_3_months_pct",
+    "discount_1_year_pct",
+  ] as const) {
     if (!(k in o)) {
       throw new ApiError(
         `API response is missing "${k}". Deploy the latest backend (subscription-billing-discounts routes + controller), then run: php artisan route:clear && php artisan config:clear`,
         502,
-        response
+        response,
       );
     }
   }
@@ -2324,69 +2702,93 @@ const requireBillingDiscountsEnvelope = (
 };
 
 /** Super admin: global subscription billing-term discounts (% off). */
-export const getAdminSubscriptionBillingDiscounts = async (): Promise<SubscriptionBillingDiscounts> => {
-  const response = await apiRequest<SubscriptionBillingDiscounts>('/admin/settings/subscription-billing-discounts', {
-    requiresAuth: true,
-  });
-  return requireBillingDiscountsEnvelope(response);
-};
+export const getAdminSubscriptionBillingDiscounts =
+  async (): Promise<SubscriptionBillingDiscounts> => {
+    const response = await apiRequest<SubscriptionBillingDiscounts>(
+      "/admin/settings/subscription-billing-discounts",
+      {
+        requiresAuth: true,
+      },
+    );
+    return requireBillingDiscountsEnvelope(response);
+  };
 
 export const updateAdminSubscriptionBillingDiscounts = async (
-  discounts: SubscriptionBillingDiscounts
+  discounts: SubscriptionBillingDiscounts,
 ): Promise<SubscriptionBillingDiscounts> => {
-  const response = await apiRequest<SubscriptionBillingDiscounts>('/admin/settings/subscription-billing-discounts', {
-    method: 'POST',
-    body: {
-      discount_1_month_pct: clampPercent0to100(discounts.discount_1_month_pct),
-      discount_3_months_pct: clampPercent0to100(discounts.discount_3_months_pct),
-      discount_1_year_pct: clampPercent0to100(discounts.discount_1_year_pct),
+  const response = await apiRequest<SubscriptionBillingDiscounts>(
+    "/admin/settings/subscription-billing-discounts",
+    {
+      method: "POST",
+      body: {
+        discount_1_month_pct: clampPercent0to100(
+          discounts.discount_1_month_pct,
+        ),
+        discount_3_months_pct: clampPercent0to100(
+          discounts.discount_3_months_pct,
+        ),
+        discount_1_year_pct: clampPercent0to100(discounts.discount_1_year_pct),
+      },
+      requiresAuth: true,
     },
-    requiresAuth: true,
-  });
+  );
   return requireBillingDiscountsEnvelope(response);
 };
 
 export type AdminSubscriptionInquiryList = {
   data: any[];
-  pagination: { current_page: number; last_page: number; per_page: number; total: number };
+  pagination: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 };
 
 /** Super admin: view subscription purchase inquiries (addons + merchant details). */
-export const getAdminSubscriptionInquiries = async (
-  params?: { perPage?: number; page?: number }
-): Promise<AdminSubscriptionInquiryList> => {
+export const getAdminSubscriptionInquiries = async (params?: {
+  perPage?: number;
+  page?: number;
+}): Promise<AdminSubscriptionInquiryList> => {
   const perPage = Math.max(1, Math.min(50, params?.perPage ?? 20));
   const page = Math.max(1, params?.page ?? 1);
   const response = await apiRequest<AdminSubscriptionInquiryList>(
     `/admin/subscription-inquiries?per_page=${perPage}&page=${page}`,
-    { requiresAuth: true }
+    { requiresAuth: true },
   );
   return response.data;
 };
 
 /** Authenticated store owner: read global subscription add-on prices and billing-term discount %. */
-export const getSubscriptionAddonPrices = async (): Promise<SubscriptionCheckoutPricing> => {
-  const response = await apiRequest<SubscriptionCheckoutPricing>('/subscription-plans/addon-prices', {
-    requiresAuth: true,
-  });
-  return parseSubscriptionCheckoutPricingPayload(response.data);
-};
+export const getSubscriptionAddonPrices =
+  async (): Promise<SubscriptionCheckoutPricing> => {
+    const response = await apiRequest<SubscriptionCheckoutPricing>(
+      "/subscription-plans/addon-prices",
+      {
+        requiresAuth: true,
+      },
+    );
+    return parseSubscriptionCheckoutPricingPayload(response.data);
+  };
 
 export const getStoreSubscription = async (storeId: number | string) => {
-  const response = await apiRequest<Record<string, unknown>>(`/stores/${storeId}/subscription`, {
-    requiresAuth: true,
-  });
+  const response = await apiRequest<Record<string, unknown>>(
+    `/stores/${storeId}/subscription`,
+    {
+      requiresAuth: true,
+    },
+  );
 
   const payload = response.data as Record<string, unknown>;
   const rawSub = payload?.activeSubscription ?? payload?.active_subscription;
 
-  if (!rawSub || typeof rawSub !== 'object') {
+  if (!rawSub || typeof rawSub !== "object") {
     return { activeSubscription: null };
   }
 
   const sub = rawSub as Record<string, any>;
   const plan = sub.plan;
-  if (!plan || typeof plan !== 'object') {
+  if (!plan || typeof plan !== "object") {
     return { activeSubscription: null };
   }
 
@@ -2407,12 +2809,14 @@ export const getStoreSubscription = async (storeId: number | string) => {
         slug: plan.slug,
         price: Number(plan.price),
         billingCycle: plan.billing_cycle,
-        durationDays: plan.duration_days ? Number(plan.duration_days) : undefined,
+        durationDays: plan.duration_days
+          ? Number(plan.duration_days)
+          : undefined,
         maxProducts: Number(plan.max_products),
         isPopular: Boolean(plan.is_popular),
         isActive: Boolean(plan.is_active),
         features: Array.isArray(plan.features) ? plan.features : [],
-        description: plan.description || '',
+        description: plan.description || "",
       },
     },
   };
@@ -2424,10 +2828,10 @@ export const activateStoreSubscription = async (
     planId: number | string;
     startsAt?: string;
     addons?: StoreSubscriptionAddons;
-  }
+  },
 ): Promise<StoreSubscription> => {
   const response = await apiRequest<any>(`/stores/${storeId}/subscription`, {
-    method: 'POST',
+    method: "POST",
     body: {
       plan_id: payload.planId,
       ...(payload.startsAt ? { starts_at: payload.startsAt } : {}),
@@ -2435,7 +2839,9 @@ export const activateStoreSubscription = async (
         ? {
             addon_payment_gateway: Boolean(payload.addons.paymentGateway),
             addon_qr_code: Boolean(payload.addons.qrCode),
-            addon_payment_gateway_help: Boolean(payload.addons.paymentGatewayHelp),
+            addon_payment_gateway_help: Boolean(
+              payload.addons.paymentGatewayHelp,
+            ),
           }
         : {}),
     },
@@ -2459,12 +2865,14 @@ export const activateStoreSubscription = async (
       slug: sub.plan.slug,
       price: Number(sub.plan.price),
       billingCycle: sub.plan.billing_cycle,
-      durationDays: sub.plan.duration_days ? Number(sub.plan.duration_days) : undefined,
+      durationDays: sub.plan.duration_days
+        ? Number(sub.plan.duration_days)
+        : undefined,
       maxProducts: Number(sub.plan.max_products),
       isPopular: Boolean(sub.plan.is_popular),
       isActive: Boolean(sub.plan.is_active),
       features: Array.isArray(sub.plan.features) ? sub.plan.features : [],
-      description: sub.plan.description || '',
+      description: sub.plan.description || "",
     },
   };
 
@@ -2475,7 +2883,9 @@ export const activateStoreSubscription = async (
 };
 
 /** Save subscription add-on toggles (e.g. paid checkout intent). Requires migrated `stores.subscription_addons`. */
-const normalizeStorePaymentIntegration = (raw: unknown): StorePaymentIntegrationSettings => {
+const normalizeStorePaymentIntegration = (
+  raw: unknown,
+): StorePaymentIntegrationSettings => {
   const o = raw as Record<string, unknown> | null | undefined;
   const a = (o?.subscription_addons ?? {}) as Record<string, unknown>;
   return {
@@ -2484,18 +2894,26 @@ const normalizeStorePaymentIntegration = (raw: unknown): StorePaymentIntegration
       qrCode: Boolean(a.qr_code),
       paymentGatewayHelp: Boolean(a.payment_gateway_help),
     },
-    razorpayKeyId: o?.razorpay_key_id != null && o.razorpay_key_id !== '' ? String(o.razorpay_key_id) : null,
+    razorpayKeyId:
+      o?.razorpay_key_id != null && o.razorpay_key_id !== ""
+        ? String(o.razorpay_key_id)
+        : null,
     hasRazorpaySecret: Boolean(o?.has_razorpay_secret),
-    paymentQrUrl: o?.payment_qr_url != null && o.payment_qr_url !== '' ? String(o.payment_qr_url) : null,
-    helpWhatsappE164: String(o?.help_whatsapp_e164 ?? ''),
-    helpWhatsappUrl: String(o?.help_whatsapp_url ?? ''),
+    paymentQrUrl:
+      o?.payment_qr_url != null && o.payment_qr_url !== ""
+        ? String(o.payment_qr_url)
+        : null,
+    helpWhatsappE164: String(o?.help_whatsapp_e164 ?? ""),
+    helpWhatsappUrl: String(o?.help_whatsapp_url ?? ""),
   };
 };
 
 export const getStorePaymentIntegration = async (
-  storeId: number | string
+  storeId: number | string,
 ): Promise<StorePaymentIntegrationSettings> => {
-  const response = await apiRequest(`/stores/${storeId}/payment-integration`, { requiresAuth: true });
+  const response = await apiRequest(`/stores/${storeId}/payment-integration`, {
+    requiresAuth: true,
+  });
   return normalizeStorePaymentIntegration(response.data);
 };
 
@@ -2505,15 +2923,15 @@ export const getStorePaymentIntegration = async (
  */
 export const updateStorePaymentIntegration = async (
   storeId: number | string,
-  body: FormData | StorePaymentIntegrationUpdateJson
+  body: FormData | StorePaymentIntegrationUpdateJson,
 ): Promise<StorePaymentIntegrationSettings> => {
   const response = await apiRequest(`/stores/${storeId}/payment-integration`, {
-    method: 'POST',
+    method: "POST",
     body:
       body instanceof FormData
         ? body
         : (Object.fromEntries(
-            Object.entries(body).filter(([, v]) => v !== undefined)
+            Object.entries(body).filter(([, v]) => v !== undefined),
           ) as Record<string, unknown>),
     requiresAuth: true,
   });
@@ -2522,20 +2940,19 @@ export const updateStorePaymentIntegration = async (
 
 export const saveStoreSubscriptionAddons = async (
   storeId: number | string,
-  addons: StoreSubscriptionAddons
+  addons: StoreSubscriptionAddons,
 ): Promise<StoreSubscriptionAddons> => {
-  const response = await apiRequest<{ subscription_addons: Record<string, boolean> }>(
-    `/stores/${storeId}/subscription/addons`,
-    {
-      method: 'POST',
-      body: {
-        addon_payment_gateway: addons.paymentGateway,
-        addon_qr_code: addons.qrCode,
-        addon_payment_gateway_help: addons.paymentGatewayHelp,
-      },
-      requiresAuth: true,
-    }
-  );
+  const response = await apiRequest<{
+    subscription_addons: Record<string, boolean>;
+  }>(`/stores/${storeId}/subscription/addons`, {
+    method: "POST",
+    body: {
+      addon_payment_gateway: addons.paymentGateway,
+      addon_qr_code: addons.qrCode,
+      addon_payment_gateway_help: addons.paymentGatewayHelp,
+    },
+    requiresAuth: true,
+  });
   const raw = response.data?.subscription_addons ?? {};
   return {
     paymentGateway: Boolean(raw.payment_gateway),
@@ -2565,7 +2982,7 @@ export type SubscriptionRazorpayOrder = {
 /** Creates a Razorpay order for paid plan + selected add-ons (Laravel uses server-side keys). */
 export const createStoreSubscriptionRazorpayOrder = async (
   storeId: number | string,
-  payload: { planId: number | string; addons: StoreSubscriptionAddons }
+  payload: { planId: number | string; addons: StoreSubscriptionAddons },
 ): Promise<SubscriptionRazorpayOrder> => {
   const response = await apiRequest<{
     key_id: string;
@@ -2582,7 +2999,7 @@ export const createStoreSubscriptionRazorpayOrder = async (
       total_rupees?: number;
     };
   }>(`/stores/${storeId}/subscription/razorpay-order`, {
-    method: 'POST',
+    method: "POST",
     body: {
       plan_id: payload.planId,
       addon_payment_gateway: Boolean(payload.addons.paymentGateway),
@@ -2595,12 +3012,16 @@ export const createStoreSubscriptionRazorpayOrder = async (
   const d = response.data;
   const rawP = d.pricing;
   const pricing: SubscriptionCheckoutPricingBreakdown | undefined =
-    rawP && typeof rawP === 'object'
+    rawP && typeof rawP === "object"
       ? {
-          grossSubtotalRupees: Math.round(Number(rawP.gross_subtotal_rupees ?? 0)),
+          grossSubtotalRupees: Math.round(
+            Number(rawP.gross_subtotal_rupees ?? 0),
+          ),
           discountPercent: Math.round(Number(rawP.discount_percent ?? 0)),
           discountRupees: Math.round(Number(rawP.discount_rupees ?? 0)),
-          taxableSubtotalRupees: Math.round(Number(rawP.taxable_subtotal_rupees ?? 0)),
+          taxableSubtotalRupees: Math.round(
+            Number(rawP.taxable_subtotal_rupees ?? 0),
+          ),
           gstRupees: Math.round(Number(rawP.gst_rupees ?? 0)),
           totalRupees: Math.round(Number(rawP.total_rupees ?? 0)),
         }
@@ -2609,13 +3030,15 @@ export const createStoreSubscriptionRazorpayOrder = async (
     keyId: String(d.key_id),
     orderId: String(d.order_id),
     amount: Number(d.amount),
-    currency: String(d.currency ?? 'INR'),
-    planName: String(d.plan_name ?? ''),
+    currency: String(d.currency ?? "INR"),
+    planName: String(d.plan_name ?? ""),
     pricing,
   };
 };
 
-function parseActivatedStoreSubscriptionResponse(sub: Record<string, any>): StoreSubscription {
+function parseActivatedStoreSubscriptionResponse(
+  sub: Record<string, any>,
+): StoreSubscription {
   const plan = sub.plan;
   return {
     id: String(sub.id),
@@ -2638,7 +3061,7 @@ function parseActivatedStoreSubscriptionResponse(sub: Record<string, any>): Stor
       isPopular: Boolean(plan.is_popular),
       isActive: Boolean(plan.is_active),
       features: Array.isArray(plan.features) ? plan.features : [],
-      description: plan.description || '',
+      description: plan.description || "",
     },
   };
 }
@@ -2650,15 +3073,20 @@ export const verifyStoreSubscriptionRazorpayPayment = async (
     razorpay_order_id: string;
     razorpay_payment_id: string;
     razorpay_signature: string;
-  }
+  },
 ): Promise<StoreSubscription> => {
-  const response = await apiRequest<any>(`/stores/${storeId}/subscription/razorpay-verify`, {
-    method: 'POST',
-    body: payload,
-    requiresAuth: true,
-  });
+  const response = await apiRequest<any>(
+    `/stores/${storeId}/subscription/razorpay-verify`,
+    {
+      method: "POST",
+      body: payload,
+      requiresAuth: true,
+    },
+  );
 
-  const mapped = parseActivatedStoreSubscriptionResponse(response.data as Record<string, any>);
+  const mapped = parseActivatedStoreSubscriptionResponse(
+    response.data as Record<string, any>,
+  );
 
   await purgeStoresCatalogCacheClient();
   dispatchStoreProfileRefresh();
@@ -2672,20 +3100,25 @@ export const verifyStoreSubscriptionRazorpayPayment = async (
  */
 export const completeStoreSubscriptionMockPayment = async (
   storeId: number | string,
-  payload: { planId: number | string; addons: StoreSubscriptionAddons }
+  payload: { planId: number | string; addons: StoreSubscriptionAddons },
 ): Promise<StoreSubscription> => {
-  const response = await apiRequest<any>(`/stores/${storeId}/subscription/mock-complete`, {
-    method: 'POST',
-    body: {
-      plan_id: payload.planId,
-      addon_payment_gateway: Boolean(payload.addons.paymentGateway),
-      addon_qr_code: Boolean(payload.addons.qrCode),
-      addon_payment_gateway_help: Boolean(payload.addons.paymentGatewayHelp),
+  const response = await apiRequest<any>(
+    `/stores/${storeId}/subscription/mock-complete`,
+    {
+      method: "POST",
+      body: {
+        plan_id: payload.planId,
+        addon_payment_gateway: Boolean(payload.addons.paymentGateway),
+        addon_qr_code: Boolean(payload.addons.qrCode),
+        addon_payment_gateway_help: Boolean(payload.addons.paymentGatewayHelp),
+      },
+      requiresAuth: true,
     },
-    requiresAuth: true,
-  });
+  );
 
-  const mapped = parseActivatedStoreSubscriptionResponse(response.data as Record<string, any>);
+  const mapped = parseActivatedStoreSubscriptionResponse(
+    response.data as Record<string, any>,
+  );
 
   await purgeStoresCatalogCacheClient();
   dispatchStoreProfileRefresh();
@@ -2693,9 +3126,11 @@ export const completeStoreSubscriptionMockPayment = async (
   return mapped;
 };
 
-export const cancelStoreSubscription = async (subscriptionId: number | string): Promise<StoreSubscription> => {
+export const cancelStoreSubscription = async (
+  subscriptionId: number | string,
+): Promise<StoreSubscription> => {
   const response = await apiRequest<any>(`/subscriptions/${subscriptionId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     requiresAuth: true,
   });
 
@@ -2720,7 +3155,7 @@ export const cancelStoreSubscription = async (subscriptionId: number | string): 
       isPopular: Boolean(sub.plan.is_popular),
       isActive: Boolean(sub.plan.is_active),
       features: Array.isArray(sub.plan.features) ? sub.plan.features : [],
-      description: sub.plan.description || '',
+      description: sub.plan.description || "",
     },
   };
 };

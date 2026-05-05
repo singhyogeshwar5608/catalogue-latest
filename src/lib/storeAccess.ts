@@ -1,19 +1,21 @@
-import type { Store, StoreSubscription } from '@/types';
-import { trialEndsAtFallbackFromCreated } from '@/src/lib/freeTrialDays';
+import type { Store, StoreSubscription } from "@/types";
+import { trialEndsAtFallbackFromCreated } from "@/src/lib/freeTrialDays";
 
 /**
  * Paid plan period (unlocks storefront for visitors, catalog limits, no trial lock).
  * Uses plan/subscription price when present so paid tiers still count if slug is missing or wrong.
  */
-export function isPaidSubscriptionActive(sub: StoreSubscription | null | undefined): boolean {
-  if (!sub || sub.status !== 'active') return false;
+export function isPaidSubscriptionActive(
+  sub: StoreSubscription | null | undefined,
+): boolean {
+  if (!sub || sub.status !== "active") return false;
   const end = new Date(sub.endsAt).getTime();
   if (Number.isNaN(end) || end <= Date.now()) return false;
   const planPrice = Number(sub.plan?.price ?? 0);
   const subPrice = Number(sub.price ?? 0);
   if (planPrice > 0 || subPrice > 0) return true;
-  const slug = (sub.plan?.slug ?? '').toLowerCase().trim();
-  if (slug === 'free' || slug === '') return false;
+  const slug = (sub.plan?.slug ?? "").toLowerCase().trim();
+  if (slug === "free" || slug === "") return false;
   return true;
 }
 
@@ -34,14 +36,17 @@ function effectiveTrialEndMs(store: Store): number | null {
 }
 
 /**
- * Owner is in the platform free-trial window: not on a paid plan and trial end is in the future.
- * Used to show the dashboard trial reminder on every visit (not only in the last 7 days).
+ * Owner is in platform free-trial window: not on a paid plan, no lifetime access, and trial end is in the future.
+ * Used to show dashboard trial reminder on every visit (not only in the last 7 days).
  */
 export function isStoreInFreeTrialWindow(
   store: Store,
   subscription: StoreSubscription | null | undefined,
 ): boolean {
   if (isPaidSubscriptionActive(subscription)) {
+    return false;
+  }
+  if (store.lifetimeAccess) {
     return false;
   }
   const trialEndMs = effectiveTrialEndMs(store);
@@ -84,13 +89,16 @@ export function getDashboardExpiryWarningDaysRemaining(
 }
 
 /**
- * True when the store's trial has ended and there is no currently active paid subscription.
- * Visitors can still browse the storefront; commerce actions use `useStorefrontTrialLock` to show the
+ * True when store's trial has ended and there is no currently active paid subscription or lifetime access.
+ * Visitors can still browse storefront; commerce actions use `useStorefrontTrialLock` to show
  * contact-owner modal. The logged-in owner bypasses that gate. Dashboard catalog uploads stay blocked in UI + API.
  */
-export function isStoreTrialExpiredWithoutPaidPlan(store: Store | null | undefined): boolean {
+export function isStoreTrialExpiredWithoutPaidPlan(
+  store: Store | null | undefined,
+): boolean {
   if (!store) return false;
   if (isPaidSubscriptionActive(store.activeSubscription)) return false;
+  if (store.lifetimeAccess) return false;
   const trialEnd = effectiveTrialEndMs(store);
   if (trialEnd === null) return false;
   return trialEnd <= Date.now();
@@ -98,10 +106,15 @@ export function isStoreTrialExpiredWithoutPaidPlan(store: Store | null | undefin
 
 export function viewerOwnsStore(
   store: Store,
-  user: { storeSlug: string | null; stores?: { slug?: string }[] } | null | undefined,
+  user:
+    | { storeSlug: string | null; stores?: { slug?: string }[] }
+    | null
+    | undefined,
 ): boolean {
   if (!user || !store.username) return false;
   const path = store.username.toLowerCase();
   if (user.storeSlug?.toLowerCase() === path) return true;
-  return Boolean(user.stores?.some((s) => (s.slug ?? '').toLowerCase() === path));
+  return Boolean(
+    user.stores?.some((s) => (s.slug ?? "").toLowerCase() === path),
+  );
 }

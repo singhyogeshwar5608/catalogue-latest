@@ -138,6 +138,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('my/follow-notifications/{notification}/read', [UserNotificationController::class, 'markRead']);
     Route::delete('my/follow-notifications/{notification}', [UserNotificationController::class, 'destroy']);
     Route::put('store/{id}', [StoreController::class, 'updateStore']);
+    Route::post('store/{id}/grant-lifetime-access', [StoreController::class, 'grantLifetimeAccess'])
+        ->middleware('role:super_admin');
     Route::delete('store/{id}', [StoreController::class, 'deleteStore']);
 
     Route::post('product', [ProductController::class, 'addProduct']);

@@ -736,6 +736,47 @@ class StoreController extends Controller
     }
 
     /**
+     * Grant lifetime access to a store (admin only).
+     */
+    public function grantLifetimeAccess(Request $request, int $id)
+    {
+        $store = Store::find($id);
+
+        if (! $store) {
+            return $this->errorResponse('Store not found.', 404);
+        }
+
+        $user = $request->user();
+        if ($user->role !== 'super_admin') {
+            return $this->errorResponse('You are not authorized to grant lifetime access.', 403);
+        }
+
+        try {
+            $store->update(['lifetime_access' => true]);
+            
+            // Log the action for audit purposes
+            Log::info('Lifetime access granted', [
+                'store_id' => $store->id,
+                'store_name' => $store->name,
+                'admin_id' => $user->id,
+                'admin_email' => $user->email,
+            ]);
+
+            return $this->successResponse('Lifetime access granted successfully.', [
+                'store' => $store->fresh(['category', 'activeSubscription.plan'])
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('grantLifetimeAccess failed', [
+                'store_id' => $id,
+                'admin_id' => $user?->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->errorResponse('Failed to grant lifetime access.', 500);
+        }
+    }
+
+    /**
      * Lightweight links payload for sitemap and crawlable internal linking.
      */
     public function publicStoreInternalLinks()

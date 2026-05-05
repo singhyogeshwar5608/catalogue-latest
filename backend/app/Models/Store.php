@@ -68,6 +68,7 @@ class Store extends Model
         'is_active',
         'trial_ends_at',
         'subscription_addons',
+        'lifetime_access',
         'payment_qr_path',
         'razorpay_key_id',
         'razorpay_key_secret',
@@ -91,6 +92,7 @@ class Store extends Model
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'subscription_addons' => 'array',
+        'lifetime_access' => 'boolean',
         'razorpay_key_secret' => 'encrypted',
     ];
 
@@ -227,10 +229,22 @@ class Store extends Model
     }
 
     /**
+     * Check if store has lifetime access.
+     */
+    public function hasLifetimeAccess(): bool
+    {
+        return (bool) $this->lifetime_access;
+    }
+
+    /**
      * Public catalog should be hidden for visitors when trial ended and there is no paid plan.
      */
     public function isPublicCatalogLocked(): bool
     {
+        if ($this->hasLifetimeAccess()) {
+            return false;
+        }
+
         if ($this->hasActivePaidPlan()) {
             return false;
         }

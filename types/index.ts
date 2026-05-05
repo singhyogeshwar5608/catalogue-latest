@@ -34,7 +34,7 @@ export interface StorePaymentIntegrationUpdateJson {
   payment_qr_mime?: string;
 }
 
-export type BoostStatus = 'active' | 'expired' | 'cancelled';
+export type BoostStatus = "active" | "expired" | "cancelled";
 
 export interface BoostPlan {
   id: string;
@@ -103,14 +103,14 @@ export interface Store {
     youtube?: string | null;
     linkedin?: string | null;
   };
-  layoutType: 'layout1' | 'layout2';
+  layoutType: "layout1" | "layout2";
   categoryId?: string;
   themeId?: string;
   createdAt: string;
   /** ISO datetime when the free store trial ends (from Laravel `trial_ends_at` or derived from `createdAt` + platform `free_trial_days`). */
   trialEndsAt?: string | null;
   /** Admin override: store has lifetime access (no expiry). */
-  isLifetime?: boolean;
+  lifetimeAccess?: boolean;
   activeBoost?: StoreBoost | null;
   activeSubscription?: StoreSubscription | null;
   /** Enabled subscription add-ons (payment hub, QR, company gateway help). */
@@ -135,32 +135,32 @@ export interface Store {
     id: number;
     name: string;
     slug?: string;
-    business_type: 'product' | 'service' | 'hybrid';
+    business_type: "product" | "service" | "hybrid";
     banner_image?: string | null;
     banner_images?: string[] | null;
     banner_title?: string | null;
     banner_subtitle?: string | null;
     banner_color?: string | null;
     color_combinations?: { color1: string; color2: string }[] | null;
-    banner_pattern?: 'waves' | 'diagonal' | 'circles' | null;
+    banner_pattern?: "waves" | "diagonal" | "circles" | null;
   };
   products?: Product[];
   services?: Service[];
 }
 
 export type ProductUnitType =
-  | 'piece'
-  | 'box'
-  | 'pack'
-  | 'set'
-  | 'kilogram'
-  | 'gram'
-  | 'liter'
-  | 'milliliter'
-  | 'meter'
-  | 'centimeter'
-  | 'square_meter'
-  | 'custom';
+  | "piece"
+  | "box"
+  | "pack"
+  | "set"
+  | "kilogram"
+  | "gram"
+  | "liter"
+  | "milliliter"
+  | "meter"
+  | "centimeter"
+  | "square_meter"
+  | "custom";
 
 export interface Product {
   id: string;
@@ -195,13 +195,13 @@ export interface Product {
 }
 
 export type ServiceBillingUnit =
-  | 'session'
-  | 'hour'
-  | 'day'
-  | 'week'
-  | 'month'
-  | 'project'
-  | 'custom';
+  | "session"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "project"
+  | "custom";
 
 export interface Service {
   id: string;
@@ -230,7 +230,7 @@ export interface UnifiedSearchResult {
   stores: Store[];
   products: Product[];
   services: Service[];
-  types: Array<'stores' | 'products' | 'services'>;
+  types: Array<"stores" | "products" | "services">;
 }
 
 export interface Review {
@@ -278,7 +278,7 @@ export interface User {
   storeId?: string;
   isAdmin: boolean;
   subscription: {
-    plan: 'free' | 'basic' | 'pro' | 'enterprise';
+    plan: "free" | "basic" | "pro" | "enterprise";
     expiryDate: string;
     isActive: boolean;
   };
@@ -293,7 +293,7 @@ export interface SubscriptionPlan {
   name: string;
   slug: string;
   price: number;
-  billingCycle: 'monthly' | 'yearly';
+  billingCycle: "monthly" | "yearly";
   durationDays?: number;
   /** Optional UI sort order (1..N). Null/undefined means "not set" (sorted after numbered plans). */
   displayOrder?: number | null;
@@ -301,7 +301,7 @@ export interface SubscriptionPlan {
    * Which platform_settings billing discount row applies (overrides duration-based guess).
    * When omitted, tier is inferred from `billingCycle` + `durationDays` (see backend `SubscriptionCheckoutPricing`).
    */
-  billingDiscountTier?: 'one_month' | 'three_months' | 'one_year' | null;
+  billingDiscountTier?: "one_month" | "three_months" | "one_year" | null;
   features: string[];
   maxProducts: number;
   isPopular?: boolean;
@@ -322,20 +322,25 @@ export interface SubscriptionBillingDiscounts {
   discount_3_months_pct: number;
   discount_1_year_pct: number;
   /** Raw rows read from DB after save (super-admin API only). */
-  _persisted_rows?: Array<{ key: string; value: string | null; updated_at: string | null }>;
+  _persisted_rows?: Array<{
+    key: string;
+    value: string | null;
+    updated_at: string | null;
+  }>;
   /** Which connection/driver/database Laravel used for that read (compare with phpMyAdmin). */
   _laravel_database?: { connection: string; driver: string; database: string };
 }
 
 /** Merchant checkout: add-on ₹ plus billing-term discount % (`GET /subscription-plans/addon-prices`). */
-export type SubscriptionCheckoutPricing = SubscriptionAddonCharges & SubscriptionBillingDiscounts;
+export type SubscriptionCheckoutPricing = SubscriptionAddonCharges &
+  SubscriptionBillingDiscounts;
 
 export interface StoreSubscription {
   id: string;
   storeId: string;
   subscriptionPlanId: string;
   price: number;
-  status: 'active' | 'expired' | 'cancelled';
+  status: "active" | "expired" | "cancelled";
   startsAt: string;
   endsAt: string;
   autoRenew: boolean;

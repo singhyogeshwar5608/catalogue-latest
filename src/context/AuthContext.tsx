@@ -34,6 +34,11 @@ type LoginPayload = {
   password: string;
 };
 
+/** Hard redirect skips React `setState` so protected pages do not briefly refetch without a token. */
+export type LogoutOptions = {
+  redirectTo?: string;
+};
+
 type RegisterPayload = {
   name: string;
   email: string;
@@ -48,7 +53,7 @@ type AuthContextValue = {
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   completeExternalLogin: (token: string) => Promise<ApiUser>;
-  logout: () => void;
+  logout: (opts?: LogoutOptions) => void;
   setUser: (user: ApiUser | null) => void;
 };
 
@@ -258,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((opts?: LogoutOptions) => {
     persistState(null, null);
     clearAuthToken();
     try {
@@ -267,6 +272,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     setPwaDashStoreCookie(null);
+
+    const redirect = opts?.redirectTo?.trim();
+    if (redirect && typeof window !== 'undefined') {
+      window.location.replace(redirect);
+      return;
+    }
+
     setState({ user: null, token: null, isInitialized: true });
   }, []);
 

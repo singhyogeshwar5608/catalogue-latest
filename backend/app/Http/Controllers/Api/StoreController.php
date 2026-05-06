@@ -265,6 +265,14 @@ class StoreController extends Controller
 
         \Log::info('Returning user stores', ['count' => $stores->count()]);
 
+        // Back-compat: some frontends still look for `is_lifetime` instead of the DB column `lifetime_access`.
+        // Keep both in the payload so admin dashboards reflect lifetime state after reload.
+        foreach ($stores as $s) {
+            if ($s instanceof \App\Models\Store) {
+                $s->setAttribute('is_lifetime', (bool) ($s->lifetime_access ?? false));
+            }
+        }
+
         return $this->successResponse('User stores retrieved successfully.', $stores);
     }
 
@@ -554,6 +562,9 @@ class StoreController extends Controller
             'instagram_url' => 'nullable|url|max:255',
             'youtube_url' => 'nullable|url|max:255',
             'linkedin_url' => 'nullable|url|max:255',
+            'lifetime_access' => 'sometimes|boolean',
+            /** Client alias for {@see Store::$lifetime_access} (admin dashboard). */
+            'is_lifetime' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -561,6 +572,18 @@ class StoreController extends Controller
         }
 
         $data = $validator->validated();
+
+        $lifetimeProvided = array_key_exists('lifetime_access', $data)
+            || array_key_exists('is_lifetime', $data);
+        if ($lifetimeProvided) {
+            if ($user->role !== 'super_admin') {
+                return $this->errorResponse('Only administrators can update lifetime access.', 403);
+            }
+            if (! array_key_exists('lifetime_access', $data) && array_key_exists('is_lifetime', $data)) {
+                $data['lifetime_access'] = (bool) $data['is_lifetime'];
+            }
+            unset($data['is_lifetime']);
+        }
 
         if (array_key_exists('slug', $data)) {
             $data['slug'] = $this->generateUniqueSlug($data['slug'] ?? Str::slug($data['name'] ?? $store->name), $store->id);

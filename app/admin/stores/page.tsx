@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BadgeCheck,
   Ban,
@@ -17,7 +17,14 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { getAllStores, updateStore, getStoreSubscription, cancelStoreSubscription, deleteStore } from '@/src/lib/api';
+import {
+  getMyStores,
+  updateStore,
+  getStoreSubscription,
+  cancelStoreSubscription,
+  deleteStore,
+} from '@/src/lib/api';
+import { useAuth } from '@/src/context/AuthContext';
 import type { Store, StoreSubscription } from '@/types';
 
 interface StoreWithSubscription extends Store {
@@ -25,6 +32,7 @@ interface StoreWithSubscription extends Store {
 }
 
 export default function AdminStoresPage() {
+  const { user: authUser, isLoggedIn } = useAuth();
   const [stores, setStores] = useState<StoreWithSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -50,28 +58,36 @@ export default function AdminStoresPage() {
     return raw;
   };
 
-  const fetchStores = async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
-    try {
-      const data = await getAllStores({ limit: 100, include_inactive: true });
-      const storesWithSubscriptions = await Promise.all(
-        data.map(async (store) => {
-          try {
-            const subData = await getStoreSubscription(store.id);
-            return { ...store, subscription: subData.activeSubscription || null };
-          } catch {
-            return { ...store, subscription: null };
-          }
-        })
-      );
-      setStores(storesWithSubscriptions);
-    } catch (error) {
-      console.error('Failed to load stores:', error);
-      setMessage({ text: 'Failed to load stores.', type: 'error' });
-    } finally {
-      if (!opts?.silent) setLoading(false);
-    }
-  };
+  const fetchStores = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!isLoggedIn || authUser?.role !== 'super_admin') {
+        if (!opts?.silent) setLoading(false);
+        return;
+      }
+      if (!opts?.silent) setLoading(true);
+      try {
+        /** JWT decides server-side; avoids stale `/stores` CDN cache & bad `getStoredUser().role` reads. */
+        const data = await getMyStores();
+        const storesWithSubscriptions = await Promise.all(
+          data.map(async (store) => {
+            try {
+              const subData = await getStoreSubscription(store.id);
+              return { ...store, subscription: subData.activeSubscription || null };
+            } catch {
+              return { ...store, subscription: null };
+            }
+          })
+        );
+        setStores(storesWithSubscriptions);
+      } catch (error) {
+        console.error('Failed to load stores:', error);
+        setMessage({ text: 'Failed to load stores.', type: 'error' });
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [isLoggedIn, authUser?.role, authUser?.id]
+  );
 
   const handleDelete = async (store: Store) => {
     if (!confirm(`Delete ${store.name}? This action cannot be undone.`)) return;
@@ -90,8 +106,8 @@ export default function AdminStoresPage() {
   };
 
   useEffect(() => {
-    fetchStores();
-  }, []);
+    void fetchStores();
+  }, [fetchStores]);
 
   const handleVerify = async (store: Store) => {
     setActionId(store.id);
@@ -111,7 +127,12 @@ export default function AdminStoresPage() {
     setActionId(store.id);
     try {
       await updateStore({ id: store.id, is_lifetime: nextValue });
-      setStores((prev) => prev.map((s) => (s.id === store.id ? { ...s, isLifetime: nextValue } : s)));
+      setStores((prev) =>
+        prev.map((s) =>
+          s.id === store.id ? { ...s, isLifetime: nextValue, lifetimeAccess: nextValue } : s,
+        ),
+      );
+      await fetchStores({ silent: true });
       setMessage({ text: `${store.name} lifetime service ${nextValue ? 'enabled' : 'disabled'}.`, type: 'success' });
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Failed to update lifetime service.', type: 'error' });
@@ -415,7 +436,7 @@ export default function AdminStoresPage() {
                     </td>
                     <td className="hidden xl:table-cell px-3 py-2 align-top">
                       <select
-                        value={store.isLifetime ? 'yes' : 'no'}
+                        value={store.lifetimeAccess || store.isLifetime ? 'yes' : 'no'}
                         onChange={(event) => handleLifetimeChange(store, event.target.value === 'yes')}
                         disabled={actionId === store.id}
                         className="w-full max-w-[4.5rem] rounded border border-gray-200 bg-white px-1 py-0.5 text-[10px] font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"

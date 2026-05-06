@@ -75,6 +75,9 @@ export function getDashboardExpiryWarningDaysRemaining(
   store: Store,
   subscription: StoreSubscription | null | undefined,
 ): number | null {
+  if (store.lifetimeAccess) {
+    return null;
+  }
   if (isPaidSubscriptionActive(subscription) && subscription?.endsAt) {
     return ceilWholeDaysUntil(subscription.endsAt);
   }

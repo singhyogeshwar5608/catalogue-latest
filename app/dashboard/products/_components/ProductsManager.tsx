@@ -1392,8 +1392,7 @@ export default function ProductsManager({ defaultShowForm = false }: ProductsMan
                       role="menuitem"
                       onClick={() => {
                         setStoreMenuOpen(false);
-                        logout();
-                        window.location.assign('/auth');
+                        logout({ redirectTo: '/auth' });
                       }}
                       className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50"
                     >

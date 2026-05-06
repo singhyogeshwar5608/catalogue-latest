@@ -31,8 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [isAuthorized, router]);
 
   const handleLogout = () => {
-    logout();
-    router.replace('/login');
+    logout({ redirectTo: '/login' });
   };
 
   if (!isAuthorized) {

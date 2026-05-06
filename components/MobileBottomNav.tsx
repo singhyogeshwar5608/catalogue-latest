@@ -649,12 +649,10 @@ export default function MobileBottomNav() {
       localStorage.removeItem('pendingRegistration');
     }
     setLegacyAuth({ storeSlug: null, isAuthenticated: false });
-    logout();
+    logout({ redirectTo: '/auth' });
     window.dispatchEvent(new Event('pendingRegistrationChanged'));
     closeDrawer();
-    showToast('Logged out');
-    router.push('/');
-  }, [closeDrawer, logout, router, showToast]);
+  }, [closeDrawer, logout, showToast]);
 
   const loggedOutNavItems = useMemo<NavItem[]>(() => {
     const allStoresItem = {

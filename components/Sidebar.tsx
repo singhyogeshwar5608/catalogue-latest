@@ -200,11 +200,9 @@ export default function Sidebar() {
   );
 
   const handleLogout = () => {
-    logout();
     setIsMobileMenuOpen(false);
-    if (typeof window !== 'undefined') {
-      window.location.replace('/auth');
-    }
+    // Hard redirect first path: no intermediate React re-render on `/dashboard/*` (avoids 401 / "Unauthorized" flash).
+    logout({ redirectTo: '/auth' });
   };
 
   const registeredEmail = user?.email?.trim() ?? '';

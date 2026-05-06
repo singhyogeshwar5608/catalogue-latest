@@ -278,7 +278,7 @@ export default function PaymentIntegrationPage() {
     "mt-1 w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2.5 text-base text-gray-900 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 sm:text-sm";
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-5 pb-8 sm:space-y-6 sm:pb-10">
+    <div className="w-full min-w-0 space-y-5 pb-8 sm:space-y-6 sm:pb-10">
       <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
         <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Payments</p>
         <h1 className="mt-1 text-xl font-semibold text-gray-900 sm:text-2xl">Payment settings</h1>
@@ -313,7 +313,7 @@ export default function PaymentIntegrationPage() {
         </div>
       )}
 
-      <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2 xl:gap-6">
         {showPg && (
           <section className="rounded-lg border border-gray-200 bg-white">
             <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">

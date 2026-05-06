@@ -96,9 +96,8 @@ export default function Navbar() {
   };
 
   const handleStoreLogout = () => {
-    logout();
     setStoreMenuOpen(false);
-    router.replace('/');
+    logout({ redirectTo: '/auth' });
   };
 
   const trimmedLocationSearch = locationSearch.trim();

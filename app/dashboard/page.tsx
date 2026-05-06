@@ -367,7 +367,9 @@ export default function DashboardPage() {
       store,
       subForWarning,
     );
-    if (isStoreInFreeTrialWindow(store, subForWarning)) {
+    if (store.lifetimeAccess) {
+      setShowSubscriptionExpiry(false);
+    } else if (isStoreInFreeTrialWindow(store, subForWarning)) {
       setShowSubscriptionExpiry(true);
     } else if (remainingDays != null && remainingDays <= 7) {
       setShowSubscriptionExpiry(true);
@@ -580,6 +582,15 @@ export default function DashboardPage() {
     return "—";
   }, [myStore, subscription, trialDurationDaysLabel, trialStillActive]);
 
+  /** Auth user email; fall back to store.owner from API when session shape omits email (desktop hydration). */
+  const displayRegisteredEmail = useMemo(() => {
+    const a = user?.email?.trim();
+    if (a) return a;
+    const b = myStore?.user?.email?.trim();
+    if (b) return b;
+    return myStore?.email?.trim() ?? "";
+  }, [user?.email, myStore?.user?.email, myStore?.email]);
+
   const catalogDashboardStats = useMemo((): DashboardStatItem[] => {
     if (!myStore) return [];
     const productLabel =
@@ -753,36 +764,59 @@ export default function DashboardPage() {
   const subscriptionExpiryPopupDaysRemaining =
     getDashboardExpiryWarningDaysRemaining(myStore, subscription);
   const boostDaysRemaining = daysUntil(myStore?.activeBoost?.endsAt);
+  const isLifetimeAccess = Boolean(myStore.lifetimeAccess);
 
   return (
     <div className="dashboard-mobile mx-auto min-w-0 max-w-6xl space-y-4 sm:space-y-6">
-      <div className="rounded-2xl border border-slate-800/80 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 py-4 text-white shadow-lg sm:px-6 max-md:rounded-[14px] max-md:border-transparent max-md:bg-[#0f2027] max-md:px-[14px] max-md:py-[10px]">
+      <div
+        className={
+          isLifetimeAccess
+            ? "rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-4 text-slate-900 shadow-md sm:px-6 max-md:rounded-[14px] max-md:px-[14px] max-md:py-[10px]"
+            : "rounded-2xl border border-slate-800/80 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 py-4 text-white shadow-lg sm:px-6 max-md:rounded-[14px] max-md:border-transparent max-md:bg-[#0f2027] max-md:px-[14px] max-md:py-[10px]"
+        }
+      >
         <div className="hidden items-center justify-between gap-2 max-md:flex">
-          <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#162530]">
-            <CreditCard className="h-4 w-4 text-[#2dd4bf]" aria-hidden />
+          <span
+            className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] ${isLifetimeAccess ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm" : "bg-[#162530]"}`}
+          >
+            {isLifetimeAccess ? (
+              <Crown className="h-4 w-4 text-white" aria-hidden />
+            ) : (
+              <CreditCard className="h-4 w-4 text-[#2dd4bf]" aria-hidden />
+            )}
           </span>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="truncate text-[12px] font-bold leading-none text-white">
+              <p
+                className={`truncate text-[12px] font-bold leading-none ${isLifetimeAccess ? "text-slate-900" : "text-white"}`}
+              >
                 {planSummaryText}
               </p>
-              <span className="shrink-0 rounded-full bg-[#2dd4bf]/20 px-1.5 py-0.5 text-[9px] font-medium leading-none text-[#2dd4bf]">
+              <span
+                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none ${isLifetimeAccess ? "bg-amber-600 text-white" : "bg-[#2dd4bf]/20 text-[#2dd4bf]"}`}
+              >
                 Active
               </span>
             </div>
-            <p className="mt-1 truncate text-[9px] font-bold leading-none text-white">
+            <p
+              className={`mt-1 truncate text-[9px] font-bold leading-none ${isLifetimeAccess ? "text-slate-600" : "text-white"}`}
+            >
               {planSummaryText}
             </p>
-            <div className="mt-1.5 h-[3px] w-full max-w-[120px] overflow-hidden rounded-full bg-white/20">
-              <span className="block h-full w-[14%] rounded-full bg-[#2dd4bf]" />
+            <div
+              className={`mt-1.5 h-[3px] w-full max-w-[120px] overflow-hidden rounded-full ${isLifetimeAccess ? "bg-amber-200/90" : "bg-white/20"}`}
+            >
+              <span
+                className={`block h-full w-[14%] rounded-full ${isLifetimeAccess ? "bg-amber-600" : "bg-[#2dd4bf]"}`}
+              />
             </div>
           </div>
 
           <Link
             href="/dashboard/subscription"
             prefetch
-            className="shrink-0 rounded-[8px] bg-[#2dd4bf] px-3 py-1.5 text-[10px] font-medium leading-none text-[#0f2027]"
+            className={`shrink-0 rounded-[8px] px-3 py-1.5 text-[10px] font-semibold leading-none ${isLifetimeAccess ? "bg-amber-600 text-white hover:bg-amber-700" : "bg-[#2dd4bf] text-[#0f2027]"}`}
           >
             Upgrade
           </Link>
@@ -790,14 +824,24 @@ export default function DashboardPage() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between max-md:hidden">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10">
-              <CreditCard className="h-5 w-5 text-amber-200" aria-hidden />
+            <span
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${isLifetimeAccess ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm ring-orange-600/25" : "bg-white/10 ring-white/10"}`}
+            >
+              {isLifetimeAccess ? (
+                <Crown className="h-5 w-5 text-white" aria-hidden />
+              ) : (
+                <CreditCard className="h-5 w-5 text-amber-200" aria-hidden />
+              )}
             </span>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+              <p
+                className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${isLifetimeAccess ? "text-amber-900/70" : "text-white/55"}`}
+              >
                 Current plan
               </p>
-              <p className="mt-0.5 text-base font-bold leading-snug text-white sm:text-lg">
+              <p
+                className={`mt-0.5 text-base font-bold leading-snug sm:text-lg ${isLifetimeAccess ? "text-slate-900" : "text-white"}`}
+              >
                 {planSummaryText}
               </p>
             </div>
@@ -879,12 +923,12 @@ export default function DashboardPage() {
                     Store ID: {myStore.id}
                   </p>
                 ) : null}
-                {user?.email?.trim() ? (
+                {displayRegisteredEmail ? (
                   <p
-                    className="mt-1 truncate text-[9px] font-semibold leading-snug text-slate-600 sm:text-[10px] md:hidden"
-                    aria-label={`Registered email ${user.email.trim()}`}
+                    className="mt-1 break-all text-xs font-semibold leading-snug text-slate-600 sm:text-sm"
+                    aria-label={`Registered email ${displayRegisteredEmail}`}
                   >
-                    Registered email: {user.email.trim()}
+                    Registered email: {displayRegisteredEmail}
                   </p>
                 ) : null}
                 {myStore.location ? (

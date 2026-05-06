@@ -73,6 +73,8 @@ export interface BackendStore {
   is_active: boolean;
   /** Admin override: store has lifetime access (no expiry). */
   is_lifetime?: boolean | null;
+  /** Laravel column; preferred over {@link is_lifetime}. */
+  lifetime_access?: boolean | null;
   created_at?: string | null;
   trial_ends_at?: string | null;
   subscription_addons?: {

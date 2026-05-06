@@ -494,6 +494,7 @@ const remainingDaysClass = (endsAtIso: string): string => {
 
 /** When Laravel omits the default `active_subscription` row, the store can still be in the platform free-trial window. */
 function isFreeTrialPeriodOpen(store: Store | null): boolean {
+  if (store?.lifetimeAccess) return false;
   if (!store?.trialEndsAt) return false;
   const t = new Date(store.trialEndsAt).getTime();
   return !Number.isNaN(t) && t > Date.now();
@@ -975,6 +976,9 @@ export default function SubscriptionPage() {
     addons?: StoreSubscriptionAddons,
   ) => {
     if (!storeId) return;
+    if (storeProfile?.lifetimeAccess) {
+      return;
+    }
     if (activeSubscription && activeSubscription.plan.id === plan.id) {
       return;
     }
@@ -1040,6 +1044,9 @@ export default function SubscriptionPage() {
   const proceedPaidPlanCheckout = async (planOverride?: SubscriptionPlan) => {
     const plan = planOverride ?? checkoutPlan;
     if (!plan || !storeId) return;
+    if (storeProfile?.lifetimeAccess) {
+      return;
+    }
     if (subscriptionCheckoutLockRef.current) return;
     subscriptionCheckoutLockRef.current = true;
     const addons = checkoutAddonPayload(plan.id);
@@ -1186,6 +1193,9 @@ export default function SubscriptionPage() {
   ) => {
     const plan = planOverride ?? checkoutPlan;
     if (!plan || !storeId) return;
+    if (storeProfile?.lifetimeAccess) {
+      return;
+    }
     if (subscriptionCheckoutLockRef.current) return;
     subscriptionCheckoutLockRef.current = true;
     const addons = checkoutAddonPayload(plan.id);
@@ -1222,11 +1232,16 @@ export default function SubscriptionPage() {
     activeSubscription.status === "active" &&
     Number(activeSubscription.plan.price) > 0;
 
+  const hasLifetimeAccess = Boolean(storeProfile?.lifetimeAccess);
+
   const showFreeTrialTopSection =
+    !hasLifetimeAccess &&
     !activeSubscription &&
     Boolean(storeProfile && isFreeTrialPeriodOpen(storeProfile));
   const showNoSubscriptionBanner =
-    !activeSubscription && !isFreeTrialPeriodOpen(storeProfile ?? null);
+    !hasLifetimeAccess &&
+    !activeSubscription &&
+    !isFreeTrialPeriodOpen(storeProfile ?? null);
 
   if (loading) {
     return (
@@ -1280,7 +1295,7 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {planChangeLockedByPaidPeriod && (
+      {planChangeLockedByPaidPeriod && !hasLifetimeAccess && (
         <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50/90 p-4 text-sm text-indigo-950 md:text-base">
           <p className="font-semibold">Active paid subscription</p>
           <p className="mt-1 text-indigo-900/90">
@@ -1300,7 +1315,66 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {activeSubscription && (
+      {activeSubscription && hasLifetimeAccess && (
+        <div
+          className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 md:p-6"
+          id="current-subscription"
+        >
+          <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 items-start gap-3 pr-16 sm:pr-0">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 md:h-12 md:w-12">
+                <Crown className="h-5 w-5 text-white md:h-6 md:w-6" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-[11px] font-semibold text-gray-900 sm:text-base md:text-xl">
+                  Lifetime free access
+                </h2>
+                <p className="mt-1 text-[10px] leading-relaxed text-amber-950/90 sm:text-sm">
+                  Your store has unlimited platform access granted by an
+                  administrator. You stay on the{" "}
+                  <span className="font-semibold capitalize">
+                    {activeSubscription.plan.name}
+                  </span>{" "}
+                  catalog label — no checkout or renewal required.
+                </p>
+              </div>
+            </div>
+            <span className="absolute right-0 top-0 inline-flex rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-semibold text-white sm:static sm:self-center sm:px-3 sm:py-1 sm:text-sm">
+              Lifetime
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-1.5 border-t border-amber-200/80 pt-3 sm:grid-cols-2 sm:gap-3 md:gap-4">
+            <div className="flex items-start justify-between gap-2 sm:block">
+              <p className="mb-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-500 sm:text-xs">
+                Plan label
+              </p>
+              <p className="text-right text-[11px] font-semibold capitalize text-gray-900 sm:text-left sm:text-base">
+                {activeSubscription.plan.name}
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:block">
+              <p className="mb-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-500 sm:text-xs">
+                Access
+              </p>
+              <p className="text-right text-[11px] font-semibold text-amber-900 sm:text-left sm:text-base">
+                No expiry · full access
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:block">
+              <p className="mb-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-500 sm:text-xs">
+                Period note
+              </p>
+              <p className="text-right text-[11px] font-medium text-gray-600 sm:text-left sm:text-sm">
+                Subscription dates below are informational only for your current
+                catalog row.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeSubscription && !hasLifetimeAccess && (
         <div
           className="bg-gradient-to-r from-purple-50 to-primary-50 border border-purple-200 rounded-xl p-4 md:p-6 mb-6"
           id="current-subscription"
@@ -1382,6 +1456,28 @@ export default function SubscriptionPage() {
                 className={`text-right text-[11px] font-semibold sm:text-left sm:text-base ${remainingDaysClass(activeSubscription.endsAt)}`}
               >
                 {remainingDaysText(activeSubscription.endsAt)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!activeSubscription && hasLifetimeAccess && (
+        <div
+          className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 md:p-6"
+          id="current-subscription"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 md:h-12 md:w-12">
+              <Crown className="h-5 w-5 text-white md:h-6 md:w-6" />
+            </div>
+            <div>
+              <h2 className="text-[11px] font-semibold text-gray-900 sm:text-base md:text-xl">
+                Lifetime free access
+              </h2>
+              <p className="mt-1 text-[10px] text-amber-950/90 sm:text-sm">
+                Unlimited platform access granted by an administrator — no plan
+                checkout required.
               </p>
             </div>
           </div>
@@ -1502,7 +1598,12 @@ export default function SubscriptionPage() {
               Full catalog from your administrator (including inactive plans for
               reference). Checkout is only offered on plans marked available.
             </p>
-            {planChangeLockedByPaidPeriod && activeSubscription ? (
+            {hasLifetimeAccess ? (
+              <p className="mt-3 text-sm font-medium leading-snug text-amber-900">
+                You have lifetime platform access. Plan checkout is not required;
+                the cards below are for reference only.
+              </p>
+            ) : planChangeLockedByPaidPeriod && activeSubscription ? (
               <p className="mt-3 text-sm font-medium leading-snug text-indigo-950">
                 You have an active paid subscription (ends{" "}
                 {new Date(activeSubscription.endsAt).toLocaleDateString()}). Use{" "}
@@ -1633,10 +1734,15 @@ export default function SubscriptionPage() {
                     ) : null}
 
                     <ul className="mb-4 space-y-1.5 p-0 md:mb-6 md:space-y-3">
-                      {(selectedPlan.id === activeSubscription?.plan.id &&
-                      Number(activeSubscription?.plan.price ?? 0) > 0
-                        ? featuresWithoutTrialHints(selectedPlan.features)
-                        : selectedPlan.features
+                      {(
+                        plan.id === activeSubscription?.plan?.id &&
+                        Number(activeSubscription?.plan?.price ?? 0) > 0
+                          ? featuresWithoutTrialHints(
+                              Array.isArray(plan.features) ? plan.features : [],
+                            )
+                          : Array.isArray(plan.features)
+                            ? plan.features
+                            : []
                       ).map((feature, index) => (
                         <li
                           key={index}
@@ -1794,11 +1900,14 @@ export default function SubscriptionPage() {
                         isActivating ||
                         !planEnabled ||
                         showFreePlanAsActive ||
-                        isActiveCurrentPlan
+                        isActiveCurrentPlan ||
+                        hasLifetimeAccess
                       }
                       className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[15px] font-semibold transition md:rounded-lg md:py-3 md:text-base ${
                         !planEnabled
                           ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                          : hasLifetimeAccess
+                            ? "cursor-not-allowed bg-amber-50 text-amber-900"
                           : showFreePlanAsActive
                             ? "cursor-not-allowed bg-emerald-50 text-emerald-900"
                             : isActiveCurrentPlan
@@ -1813,6 +1922,8 @@ export default function SubscriptionPage() {
                         </>
                       ) : !planEnabled ? (
                         "Unavailable"
+                      ) : hasLifetimeAccess ? (
+                        "Lifetime access — no plan needed"
                       ) : showFreePlanAsActive ? (
                         "Already Active"
                       ) : isActiveCurrentPlan ? (
@@ -1992,22 +2103,27 @@ export default function SubscriptionPage() {
                         }
                       }}
                       disabled={
-                        activeSubscription?.plan.id === selectedPlan.id &&
-                        activeSubscription?.status === "active"
+                        hasLifetimeAccess ||
+                        (activeSubscription?.plan.id === selectedPlan.id &&
+                          activeSubscription?.status === "active")
                       }
                       className={`w-full rounded-xl py-3 text-sm font-semibold shadow-lg transition sm:w-auto sm:px-6 ${
-                        activeSubscription?.plan.id === selectedPlan.id &&
-                        activeSubscription?.status === "active"
-                          ? "cursor-not-allowed bg-violet-50 text-violet-900 shadow-violet-200/40"
-                          : "bg-primary text-white shadow-primary/25 hover:bg-primary-700"
+                        hasLifetimeAccess
+                          ? "cursor-not-allowed bg-amber-50 text-amber-900 shadow-amber-200/40"
+                          : activeSubscription?.plan.id === selectedPlan.id &&
+                              activeSubscription?.status === "active"
+                            ? "cursor-not-allowed bg-violet-50 text-violet-900 shadow-violet-200/40"
+                            : "bg-primary text-white shadow-primary/25 hover:bg-primary-700"
                       }`}
                     >
-                      {activeSubscription?.plan.id === selectedPlan.id &&
-                      activeSubscription?.status === "active"
-                        ? "Active plan"
-                        : activeSubscription?.plan.id === selectedPlan.id
-                          ? "Renew this plan"
-                          : "Choose this plan"}
+                      {hasLifetimeAccess
+                        ? "Lifetime access — no plan needed"
+                        : activeSubscription?.plan.id === selectedPlan.id &&
+                            activeSubscription?.status === "active"
+                          ? "Active plan"
+                          : activeSubscription?.plan.id === selectedPlan.id
+                            ? "Renew this plan"
+                            : "Choose this plan"}
                     </button>
                   )}
                 </div>

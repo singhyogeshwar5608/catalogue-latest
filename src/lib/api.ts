@@ -778,6 +778,19 @@ function mergeUpdateStoreSocialFromPayload(
   };
 }
 
+/** Prefer over `Boolean(x)` for API flags — `Boolean("0")` is true in JavaScript. */
+const coerceApiBoolean = (raw: unknown): boolean => {
+  if (raw === true || raw === 1) return true;
+  if (raw === false || raw === 0 || raw === null || raw === undefined) {
+    return false;
+  }
+  if (typeof raw === "string") {
+    const s = raw.trim().toLowerCase();
+    return s === "1" || s === "true" || s === "yes";
+  }
+  return false;
+};
+
 const normalizeStore = (
   store: BackendStore,
   options: { includeActiveBoost?: boolean } = {},
@@ -944,9 +957,15 @@ const normalizeStore = (
       (store as BackendStore & { createdAt?: string | null }).createdAt ??
       new Date().toISOString(),
     trialEndsAt: resolveTrialEndsAt(store),
-    isLifetime: Boolean(
-      (store as BackendStore & { is_lifetime?: unknown }).is_lifetime,
-    ),
+    ...(() => {
+      const b = store as BackendStore & {
+        lifetime_access?: unknown;
+        is_lifetime?: unknown;
+      };
+      const lifetimeFlag =
+        coerceApiBoolean(b.lifetime_access) || coerceApiBoolean(b.is_lifetime);
+      return { lifetimeAccess: lifetimeFlag, isLifetime: lifetimeFlag };
+    })(),
     activeBoost,
     activeSubscription: normalizedSubscription,
     subscriptionAddons,
@@ -1771,18 +1790,13 @@ export const grantLifetimeAccess = async (
     `/store/${storeId}/grant-lifetime-access`,
     {
       method: "POST",
+      requiresAuth: true,
     },
   );
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to grant lifetime access");
-  }
-
-  const inner = await response.json();
-
-  if (!inner.store) {
-    throw new Error("Store data not found in response");
+  const inner = response.data?.store;
+  if (!inner || typeof inner !== "object") {
+    throw new Error(response.message || "Failed to grant lifetime access");
   }
 
   const normalizedStore = normalizeStore(inner as BackendStore);

@@ -111,6 +111,8 @@ export interface Store {
   trialEndsAt?: string | null;
   /** Admin override: store has lifetime access (no expiry). */
   lifetimeAccess?: boolean;
+  /** Same as {@link lifetimeAccess}; used by admin stores table (Laravel `lifetime_access`). */
+  isLifetime?: boolean;
   activeBoost?: StoreBoost | null;
   activeSubscription?: StoreSubscription | null;
   /** Enabled subscription add-ons (payment hub, QR, company gateway help). */

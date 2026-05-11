@@ -128,16 +128,16 @@ const SellStartNavTile = ({ href, isActive }: { href: string; isActive?: boolean
         aria-label="Create store — free setup"
       >
         <span className="pointer-events-none absolute right-0 top-1/2 z-0 flex -translate-y-1/2 translate-x-[1px] flex-col gap-[5px]" aria-hidden>
-          <span className="sell-spark-ray h-[2px] w-[7px] rounded-full bg-gradient-to-r from-transparent via-fuchsia-400 to-pink-500 opacity-70" style={{ animationDelay: '0ms' }} />
-          <span className="sell-spark-ray h-[2px] w-[11px] rounded-full bg-gradient-to-r from-transparent via-fuchsia-400 to-pink-500 opacity-80" style={{ animationDelay: '180ms' }} />
-          <span className="sell-spark-ray h-[2px] w-[8px] rounded-full bg-gradient-to-r from-transparent via-fuchsia-400 to-pink-500 opacity-70" style={{ animationDelay: '360ms' }} />
+          <span className="sell-spark-ray h-[2px] w-[7px] rounded-full bg-gradient-to-r from-transparent via-emerald-400 to-green-500 opacity-70" style={{ animationDelay: '0ms' }} />
+          <span className="sell-spark-ray h-[2px] w-[11px] rounded-full bg-gradient-to-r from-transparent via-emerald-400 to-green-500 opacity-80" style={{ animationDelay: '180ms' }} />
+          <span className="sell-spark-ray h-[2px] w-[8px] rounded-full bg-gradient-to-r from-transparent via-emerald-400 to-green-500 opacity-70" style={{ animationDelay: '360ms' }} />
         </span>
         <div
-          className={`sell-start-card-animate relative z-[1] flex w-[min(4.4rem,28vw)] flex-col items-center rounded-[14px] border bg-gradient-to-b from-white to-pink-50/40 px-1 pb-[5px] pt-[1.15rem] shadow-[0_2px_12px_rgba(219,39,119,0.08)] ${
-            isActive ? 'border-pink-400 ring-[2px] ring-pink-300/70' : 'border-pink-200/85'
+          className={`sell-start-card-animate relative z-[1] flex w-[min(4.4rem,28vw)] flex-col items-center rounded-[14px] border bg-gradient-to-b from-white to-emerald-50/40 px-1 pb-[5px] pt-[1.15rem] shadow-[0_2px_12px_rgba(5,150,105,0.08)] ${
+            isActive ? 'border-emerald-400 ring-[2px] ring-emerald-300/70' : 'border-emerald-200/85'
           }`}
         >
-          <span className="absolute right-[3px] top-[5px] z-10 whitespace-nowrap rounded-full bg-gradient-to-br from-red-500 to-red-600 px-[5px] py-[2px] text-[6.5px] font-extrabold uppercase leading-none tracking-[0.14em] text-white shadow-[0_1px_3px_rgba(220,38,38,0.45)]">
+          <span className="absolute right-[3px] top-[5px] z-10 whitespace-nowrap rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 px-[5px] py-[2px] text-[6.5px] font-extrabold uppercase leading-none tracking-[0.14em] text-white shadow-[0_1px_3px_rgba(5,150,105,0.45)]">
             Free
           </span>
           <motion.span
@@ -145,9 +145,9 @@ const SellStartNavTile = ({ href, isActive }: { href: string; isActive?: boolean
             animate={reduceMotion ? { rotate: 0, scale: 1 } : { rotate: [0, 8, -6, 0], scale: [1, 1.06, 1.04, 1] }}
             transition={reduceMotion ? { duration: 0 } : { duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <Store className="h-5 w-5 text-[#be185d]" strokeWidth={2.35} aria-hidden />
+            <Store className="h-5 w-5 text-[#047857]" strokeWidth={2.35} aria-hidden />
           </motion.span>
-          <p className="mt-0.5 text-center text-[9.5px] font-bold leading-tight tracking-[0.01em] text-[#9d174d]">
+          <p className="mt-0.5 text-center text-[9.5px] font-bold leading-tight tracking-[0.01em] text-[#065f46]">
             Create Store
           </p>
         </div>

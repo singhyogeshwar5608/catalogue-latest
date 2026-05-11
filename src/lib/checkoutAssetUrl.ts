@@ -5,9 +5,21 @@
  */
 export function checkoutQrImageSrc(url: string | null | undefined): string {
   if (url == null || typeof url !== "string") return "";
-  const u = url.trim();
+  let u = url.trim();
   if (!u) return "";
   if (u.startsWith("http://") || u.startsWith("https://")) return u;
+
+  // Ensure root-relative paths start with / so Next.js rewrites catch them.
+  if (!u.startsWith("/") && !u.startsWith("http")) {
+    u = "/" + u;
+  }
+
+  // In our Next.js setup, we use /api/laravel as a proxy to the backend's /api/v1/v1.
+  // If the URL starts with /api/v1/v1/, we must use the proxy path to avoid 404s and CORS.
+  if (u.startsWith("/api/v1/v1/")) {
+    u = u.replace("/api/v1/v1/", "/api/laravel/");
+  }
+
   if (typeof window !== "undefined" && u.startsWith("/")) {
     return `${window.location.origin}${u}`;
   }

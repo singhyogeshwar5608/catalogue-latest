@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -246,6 +247,11 @@ class StoreController extends Controller
                 'user',
                 'activeSubscription.plan',
             ])
+                ->withCount([
+                    'subscriptionInquiries as pending_subscription_inquiries_count' => function ($q) {
+                        $q->whereIn('status', ['created', 'paid']);
+                    },
+                ])
                 ->orderByDesc('created_at')
                 ->get();
         } else {
@@ -270,6 +276,10 @@ class StoreController extends Controller
         foreach ($stores as $s) {
             if ($s instanceof \App\Models\Store) {
                 $s->setAttribute('is_lifetime', (bool) ($s->lifetime_access ?? false));
+                $s->setAttribute(
+                    'has_pending_subscription_inquiry',
+                    (int) ($s->pending_subscription_inquiries_count ?? 0) > 0
+                );
             }
         }
 
@@ -542,6 +552,7 @@ class StoreController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
             'name' => 'sometimes|required|string|max:255',
             'slug' => 'sometimes|nullable|string|max:255|unique:stores,slug,'.$store->id,
             'category_id' => 'sometimes|required|exists:categories,id',
@@ -565,6 +576,10 @@ class StoreController extends Controller
             'lifetime_access' => 'sometimes|boolean',
             /** Client alias for {@see Store::$lifetime_access} (admin dashboard). */
             'is_lifetime' => 'sometimes|boolean',
+            'subscription_addons' => 'sometimes|array',
+            'subscription_addons.payment_gateway' => 'sometimes|boolean',
+            'subscription_addons.qr_code' => 'sometimes|boolean',
+            'subscription_addons.payment_gateway_help' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -572,6 +587,13 @@ class StoreController extends Controller
         }
 
         $data = $validator->validated();
+
+        if (! Hash::check($data['current_password'], $user->getAuthPassword())) {
+            return $this->errorResponse('Current password is incorrect.', 422, [
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+        unset($data['current_password']);
 
         $lifetimeProvided = array_key_exists('lifetime_access', $data)
             || array_key_exists('is_lifetime', $data);
@@ -583,6 +605,10 @@ class StoreController extends Controller
                 $data['lifetime_access'] = (bool) $data['is_lifetime'];
             }
             unset($data['is_lifetime']);
+        }
+
+        if (array_key_exists('subscription_addons', $data) && $user->role !== 'super_admin') {
+            return $this->errorResponse('Only administrators can update subscription add-ons directly.', 403);
         }
 
         if (array_key_exists('slug', $data)) {
@@ -701,6 +727,11 @@ class StoreController extends Controller
                 $payload['viewer_liked'] = $viewer['viewer_liked'];
             } catch (\Throwable) {
             }
+
+            // Include public payment QR URL if the add-on is active.
+            $qrAddon = (bool) (($store->subscription_addons ?? [])['qr_code'] ?? false);
+            $payload['payment_qr_url'] = $qrAddon ? \App\Support\PaymentQrUrl::displayUrl($store->payment_qr_path, (int) $store->id) : null;
+
             $payload['keywords'] = $store->seo_keywords ?: $this->normalizeStoreKeywords(null, $store->name, $store->location);
 
             return $this->successResponse('Store retrieved successfully.', $payload);
@@ -727,6 +758,8 @@ class StoreController extends Controller
             return $this->errorResponse('You are not authorized to delete this store.', 403);
         }
 
+        $publicPath = trim((string) ($store->username ?: $store->slug));
+
         try {
             DB::transaction(function () use ($store, $id) {
                 // Prefer Eloquent so events/cascades run as expected.
@@ -743,6 +776,11 @@ class StoreController extends Controller
                     throw new \RuntimeException('Store delete did not persist. Check DB connection / permissions / foreign keys.');
                 }
             }, 3);
+
+            // Notify search engines about deletion (IndexNow, etc.)
+            if ($publicPath !== '') {
+                \App\Support\SearchEngineIndexer::removeForStore(url('/store/'.$publicPath));
+            }
         } catch (\Throwable $e) {
             Log::warning('deleteStore failed', [
                 'store_id' => $id,

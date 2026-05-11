@@ -15,6 +15,19 @@ export function storeHasSubscriptionAddonAccess(store: Store | null | undefined)
  */
 export function storeCanAccessPaymentIntegrationHub(store: Store | null | undefined): boolean {
   if (!store) return false;
+  
+  // Super-admin manual override: if lifetime access is granted, 
+  // allow access to payment hub if at least one add-on is enabled.
+  if (store.lifetimeAccess || store.isLifetime) {
+    return storeHasSubscriptionAddonAccess(store);
+  }
+
+  // Allow access even on free plans if an admin has manually enabled add-ons.
+  // This ensures that when admin enables QR/PG from admin panel, the user can see the settings.
+  if (storeHasSubscriptionAddonAccess(store)) {
+    return true;
+  }
+
   if (!isPaidSubscriptionActive(store.activeSubscription ?? null)) return false;
   return storeHasSubscriptionAddonAccess(store);
 }

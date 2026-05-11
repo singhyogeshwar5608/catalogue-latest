@@ -103,6 +103,8 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/', [StoreSubscriptionController::class, 'show']);
         Route::post('/', [StoreSubscriptionController::class, 'activate']);
         Route::post('addons', [StoreSubscriptionController::class, 'saveAddonSelection']);
+        Route::post('upgrade-inquiry', [StoreSubscriptionController::class, 'createUpgradeInquiry']);
+        Route::post('upgrade-inquiry/fulfill', [StoreSubscriptionController::class, 'fulfillUpgradeInquiry']);
         Route::post('razorpay-order', [StoreSubscriptionRazorpayController::class, 'createOrder']);
         Route::post('razorpay-verify', [StoreSubscriptionRazorpayController::class, 'verifyPayment']);
         Route::post('mock-complete', [StoreSubscriptionRazorpayController::class, 'mockComplete']);

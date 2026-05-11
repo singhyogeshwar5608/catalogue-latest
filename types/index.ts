@@ -80,6 +80,7 @@ export interface Store {
   businessType: string;
   categoryName?: string;
   location: string;
+  address?: string | null;
   /** Indian state (or region) for SEO — from Laravel `stores.state`. */
   state?: string | null;
   /** District / city area for SEO — from Laravel `stores.district`. */
@@ -117,6 +118,10 @@ export interface Store {
   activeSubscription?: StoreSubscription | null;
   /** Enabled subscription add-ons (payment hub, QR, company gateway help). */
   subscriptionAddons?: StoreSubscriptionAddons;
+  /** Public payment QR code URL (from Laravel `payment_qr_url`). */
+  paymentQrUrl?: string | null;
+  /** Admin attention flag when merchant requested payment add-on activation help. */
+  hasPendingSubscriptionInquiry?: boolean;
   productsCount?: number;
   servicesCount?: number;
   /** Public store profile: follower / like totals (from API). */

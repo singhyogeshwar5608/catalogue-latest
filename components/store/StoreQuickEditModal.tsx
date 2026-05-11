@@ -114,10 +114,43 @@ export default function StoreQuickEditModal({ open, store, onClose, onSaved }: P
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!currentPassword.trim()) {
+      setError('Please enter your current password to save changes.');
+      return;
+    }
+
     setSaving(true);
     try {
+      let activeCurrentPassword = currentPassword;
+
+      // 1. If new password is provided, update it first
+      if (newPassword.trim()) {
+        if (newPassword.length < 8) {
+          setError('New password must be at least 8 characters.');
+          setSaving(false);
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          setError('New password and confirmation do not match.');
+          setSaving(false);
+          return;
+        }
+
+        await updateAccountPassword({
+          current_password: currentPassword,
+          password: newPassword,
+          password_confirmation: confirmPassword,
+        });
+
+        // If password update succeeds, the next call (updateStore) must use the NEW password
+        activeCurrentPassword = newPassword;
+      }
+
+      // 2. Update store details
       const { store: next } = await updateStore({
         id: store.id,
+        current_password: activeCurrentPassword,
         ...(logoPendingDataUrl ? { logo: logoPendingDataUrl } : {}),
         name: name.trim(),
         description: description.trim() ? description.trim() : undefined,
@@ -131,8 +164,18 @@ export default function StoreQuickEditModal({ open, store, onClose, onSaved }: P
         youtube_url: emptyToNull(youtube),
         linkedin_url: emptyToNull(linkedin),
       });
+      setCurrentPassword(''); // Clear password on success
+      setNewPassword('');
+      setConfirmPassword('');
       onSaved(next);
     } catch (err) {
+      if (err instanceof ApiError && err.payload) {
+        const fieldErrors = parseApiValidationErrors(err.payload);
+        if (fieldErrors) {
+          setError(formatValidationErrorsForDisplay(fieldErrors, 'auth'));
+          return;
+        }
+      }
       setError(
         isApiError(err) ? err.message || 'Could not save changes' : err instanceof Error ? err.message : 'Save failed',
       );
@@ -213,7 +256,9 @@ export default function StoreQuickEditModal({ open, store, onClose, onSaved }: P
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 space-y-4">
             {error ? (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                <p className="whitespace-pre-line text-sm text-red-700">{error}</p>
+              </div>
             ) : null}
 
             <div>
@@ -388,17 +433,6 @@ export default function StoreQuickEditModal({ open, store, onClose, onSaved }: P
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => void handleUpdatePassword()}
-                disabled={
-                  passwordSaving || saving || !currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()
-                }
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-white py-2.5 text-sm font-semibold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {passwordSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {passwordSaving ? 'Updating…' : 'Update password'}
-              </button>
             </div>
 
             <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">

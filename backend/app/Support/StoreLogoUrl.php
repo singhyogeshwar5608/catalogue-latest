@@ -62,4 +62,26 @@ final class StoreLogoUrl
 
         return $base.$suffix.$query;
     }
+
+    /**
+     * Delete the logo file from physical storage.
+     */
+    public static function deleteStoredLogo(?string $stored): void
+    {
+        $rel = self::relativePathFromStored($stored);
+        if ($rel === null) {
+            return;
+        }
+
+        $full = public_path($rel);
+        if (is_file($full)) {
+            @unlink($full);
+        }
+
+        try {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($rel);
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
 }

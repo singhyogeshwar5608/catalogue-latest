@@ -23,6 +23,7 @@ import {
   CreditCard,
   Building2,
   Download,
+  Phone,
 } from "lucide-react";
 import {
   getSubscriptionPlanCatalog,
@@ -35,6 +36,7 @@ import {
   getSubscriptionAddonPrices,
   saveStoreSubscriptionAddons,
   updateStorePaymentIntegration,
+  requestUpgradeInquiry,
   createStoreSubscriptionRazorpayOrder,
   verifyStoreSubscriptionRazorpayPayment,
   completeStoreSubscriptionMockPayment,
@@ -621,6 +623,8 @@ export default function SubscriptionPage() {
     null,
   );
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
+  const [upgradeConfirmOpen, setUpgradeConfirmOpen] = useState(false);
+  const [upgradeSuccessOpen, setUpgradeSuccessOpen] = useState(false);
   const [addonPrices, setAddonPrices] =
     useState<SubscriptionCheckoutPricing | null>(null);
   const [addonPricesLoading, setAddonPricesLoading] = useState(false);
@@ -811,7 +815,11 @@ export default function SubscriptionPage() {
   /** Save add-ons as soon as toggles change (after hydrate); Payment settings nav still requires an active paid period. */
   const checkoutPlanId = checkoutPlan?.id;
   useEffect(() => {
-    if (!checkoutPlanId || !storeId || !addonHydrated) return undefined;
+    // Only persist add-ons when the user is in the real paid checkout flow.
+    // Upgrade-inquiry flow (partial QR/PG) must not unlock payment settings.
+    if (!checkoutConfirmOpen || !checkoutPlanId || !storeId || !addonHydrated) {
+      return undefined;
+    }
     const selection = addonsByPlanId[checkoutPlanId] ?? hydratedStoreAddons;
     const t = window.setTimeout(() => {
       void (async () => {
@@ -836,6 +844,7 @@ export default function SubscriptionPage() {
     addonsByPlanId,
     hydratedStoreAddons,
     addonHydrated,
+    checkoutConfirmOpen,
     checkoutPlanId,
     storeId,
   ]);
@@ -1843,7 +1852,7 @@ export default function SubscriptionPage() {
                             onToggle={() =>
                               setAddonsByPlanId((prev) => {
                                 const next = !cardAddons.qrCode;
-                                if (next) {
+                                if (next && cardAddons.paymentGateway) {
                                   setQrUploadPlanId(plan.id);
                                   setQrUploadOpen(true);
                                 }
@@ -1879,61 +1888,97 @@ export default function SubscriptionPage() {
                       </div>
                     ) : null}
 
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        setCheckoutPlan(plan);
-                        setSubscriptionNotice(null);
-                        setActivationError(null);
-                        setSuccessMessage(null);
-                        if (Number(plan.price) > 0) {
-                          setCheckoutConfirmOpen(true);
-                        } else {
-                          await handleActivatePlan(
-                            plan,
-                            checkoutAddonPayload(plan.id),
+                    {(() => {
+                      const addons = checkoutAddonPayload(plan.id);
+                      const hasBothCoreAddons =
+                        Boolean(addons.paymentGateway) && Boolean(addons.qrCode);
+                      if (Number(plan.price) > 0 && isActiveCurrentPlan) {
+                        if (!hasBothCoreAddons) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCheckoutPlan(plan);
+                                setUpgradeConfirmOpen(true);
+                              }}
+                              disabled={isActivating || !planEnabled || hasLifetimeAccess}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-[15px] font-semibold text-white transition hover:bg-primary-700 md:rounded-lg md:py-3 md:text-base"
+                            >
+                              Upgrade Plan • ₹{displayPrice}
+                            </button>
                           );
                         }
-                      }}
-                      disabled={
-                        isActivating ||
-                        !planEnabled ||
-                        showFreePlanAsActive ||
-                        isActiveCurrentPlan ||
-                        hasLifetimeAccess
+                        return (
+                          <button
+                            type="button"
+                            disabled
+                            className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-violet-50 py-2.5 text-[15px] font-semibold text-violet-900 md:rounded-lg md:py-3 md:text-base"
+                          >
+                            Active plan
+                          </button>
+                        );
                       }
-                      className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[15px] font-semibold transition md:rounded-lg md:py-3 md:text-base ${
-                        !planEnabled
-                          ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                          : hasLifetimeAccess
-                            ? "cursor-not-allowed bg-amber-50 text-amber-900"
-                          : showFreePlanAsActive
-                            ? "cursor-not-allowed bg-emerald-50 text-emerald-900"
-                            : isActiveCurrentPlan
-                              ? "cursor-not-allowed bg-violet-50 text-violet-900"
-                              : "bg-primary text-white hover:bg-primary-700"
-                      }`}
-                    >
-                      {isActivating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Activating...
-                        </>
-                      ) : !planEnabled ? (
-                        "Unavailable"
-                      ) : hasLifetimeAccess ? (
-                        "Lifetime access — no plan needed"
-                      ) : showFreePlanAsActive ? (
-                        "Already Active"
-                      ) : isActiveCurrentPlan ? (
-                        "Active plan"
-                      ) : isCurrentPlan ? (
-                        `Renew • ₹${displayPrice}`
-                      ) : (
-                        `Choose Plan • ₹${displayPrice}`
-                      )}
-                    </button>
+
+                      // FREE PLAN or other cases
+                      return (
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setCheckoutPlan(plan);
+                            setSubscriptionNotice(null);
+                            setActivationError(null);
+                            setSuccessMessage(null);
+                            if (Number(plan.price) > 0) {
+                              setCheckoutConfirmOpen(true);
+                            } else {
+                              await handleActivatePlan(
+                                plan,
+                                checkoutAddonPayload(plan.id),
+                              );
+                            }
+                          }}
+                          disabled={
+                            isActivating ||
+                            !planEnabled ||
+                            showFreePlanAsActive ||
+                            isActiveCurrentPlan ||
+                            hasLifetimeAccess
+                          }
+                          className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[15px] font-semibold transition md:rounded-lg md:py-3 md:text-base ${
+                              !planEnabled
+                                ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                                : hasLifetimeAccess
+                                  ? "cursor-not-allowed bg-amber-50 text-amber-900"
+                                  : showFreePlanAsActive
+                                    ? "cursor-not-allowed bg-emerald-50 text-emerald-900"
+                                    : isActiveCurrentPlan
+                                      ? "cursor-not-allowed bg-violet-50 text-violet-900"
+                                      : "bg-primary text-white hover:bg-primary-700"
+                            }`}
+                        >
+                          {isActivating ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Activating...
+                            </>
+                          ) : !planEnabled ? (
+                            "Unavailable"
+                          ) : hasLifetimeAccess ? (
+                            "Lifetime access — no plan needed"
+                          ) : showFreePlanAsActive ? (
+                            "Already Active"
+                          ) : isActiveCurrentPlan ? (
+                            "Active plan"
+                          ) : isCurrentPlan ? (
+                            `Renew • ₹${displayPrice}`
+                          ) : (
+                            `Choose Plan • ₹${displayPrice}`
+                          )}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -2337,6 +2382,196 @@ export default function SubscriptionPage() {
                 <p className="mt-2 text-center text-[11px] text-slate-500">
                   You’ll be redirected to Razorpay to complete payment.
                 </p>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {mounted &&
+        upgradeConfirmOpen &&
+        checkoutPlan &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[104] flex items-center justify-center p-4"
+            role="presentation"
+          >
+            <button
+              type="button"
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              aria-label="Close dialog"
+              onClick={() => setUpgradeConfirmOpen(false)}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="upgrade-confirm-title"
+              className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-slate-100 bg-gradient-to-r from-amber-50 via-white to-orange-50 px-4 py-4 sm:px-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-[11px]">
+                      Confirm upgrade
+                    </p>
+                    <h2
+                      id="upgrade-confirm-title"
+                      className="mt-1 truncate text-base font-bold text-slate-900 sm:text-xl"
+                    >
+                      {checkoutPlan.name}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeConfirmOpen(false)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-4 py-4 sm:px-6">
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-700">
+                    Are you sure you want to upgrade your plan?
+                  </p>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs font-medium text-amber-900">
+                      After upgrade, our team will contact you within 24 hours to complete the integration setup.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeConfirmOpen(false)}
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto sm:px-5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!storeId || !checkoutPlan) return;
+                      setActivatingPlanId(checkoutPlan.id);
+                      try {
+                        const addons = checkoutAddonPayload(checkoutPlan.id);
+                        await requestUpgradeInquiry(storeId, {
+                          planId: checkoutPlan.id,
+                          addons,
+                        });
+
+                        // Show success modal
+                        setUpgradeConfirmOpen(false);
+                        setUpgradeSuccessOpen(true);
+                        dispatchStoreProfileRefresh();
+                      } catch (error) {
+                        console.error('Upgrade request failed:', error);
+                        setSubscriptionNotice(
+                          isApiError(error) 
+                            ? error.message 
+                            : "Failed to submit upgrade request. Please try again."
+                        );
+                        setUpgradeConfirmOpen(false);
+                      } finally {
+                        setActivatingPlanId(null);
+                      }
+                    }}
+                    disabled={activatingPlanId === checkoutPlan.id}
+                    className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6"
+                  >
+                    {activatingPlanId === checkoutPlan.id ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      "Yes, Upgrade"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {mounted &&
+        upgradeSuccessOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[105] flex items-center justify-center p-4"
+            role="presentation"
+          >
+            <button
+              type="button"
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              aria-label="Close dialog"
+              onClick={() => setUpgradeSuccessOpen(false)}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="upgrade-success-title"
+              className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-slate-100 bg-gradient-to-r from-green-50 via-white to-emerald-50 px-4 py-4 sm:px-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-[11px]">
+                      Upgrade Request Submitted
+                    </p>
+                    <h2
+                      id="upgrade-success-title"
+                      className="mt-1 truncate text-base font-bold text-slate-900 sm:text-xl"
+                    >
+                      Thank you!
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeSuccessOpen(false)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-4 py-4 sm:px-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 rounded-xl bg-green-50 p-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                      <Phone className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Please call on 7015150181
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        Our team will contact you within 24 hours to complete the integration.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
+                <button
+                  type="button"
+                  onClick={() => setUpgradeSuccessOpen(false)}
+                  className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary-700 sm:w-auto sm:px-6"
+                >
+                  Got it
+                </button>
               </div>
             </div>
           </div>,

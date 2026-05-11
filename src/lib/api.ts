@@ -210,6 +210,7 @@ export type CreateStorePayload = {
 
 export type UpdateStorePayload = {
   id: number | string;
+  current_password?: string;
   name?: string;
   category_id?: number;
   logo?: string | null;
@@ -230,6 +231,11 @@ export type UpdateStorePayload = {
   instagram_url?: string | null;
   youtube_url?: string | null;
   linkedin_url?: string | null;
+  subscription_addons?: {
+    payment_gateway?: boolean;
+    qr_code?: boolean;
+    payment_gateway_help?: boolean;
+  };
 };
 
 export type AddProductPayload = {
@@ -943,6 +949,7 @@ const normalizeStore = (
     categoryId: store.category_id ? String(store.category_id) : undefined,
     themeId: store.theme ?? undefined,
     location: store.location ?? store.address ?? "Pan India",
+    address: store.address ?? undefined,
     latitude: parseCoord(store.latitude),
     longitude: parseCoord(store.longitude),
     distanceKm: parseDistanceKm(store.distance_km),
@@ -969,6 +976,10 @@ const normalizeStore = (
     activeBoost,
     activeSubscription: normalizedSubscription,
     subscriptionAddons,
+    paymentQrUrl: (store as any).payment_qr_url || null,
+    hasPendingSubscriptionInquiry: Boolean(
+      (store as BackendStore).has_pending_subscription_inquiry,
+    ),
     productsCount:
       (store as any).products_count ??
       (store.products ? store.products.length : undefined),
@@ -2973,6 +2984,49 @@ export const saveStoreSubscriptionAddons = async (
     qrCode: Boolean(raw.qr_code),
     paymentGatewayHelp: Boolean(raw.payment_gateway_help),
   };
+};
+
+/** Merchant requests admin callback for paid-plan payment add-on activation. */
+export const requestUpgradeInquiry = async (
+  storeId: number | string,
+  payload: {
+    planId: number | string;
+    addons: StoreSubscriptionAddons;
+  },
+): Promise<void> => {
+  await apiRequest(`/stores/${storeId}/subscription/upgrade-inquiry`, {
+    method: "POST",
+    body: {
+      plan_id: payload.planId,
+      addon_payment_gateway: Boolean(payload.addons.paymentGateway),
+      addon_qr_code: Boolean(payload.addons.qrCode),
+      addon_payment_gateway_help: Boolean(payload.addons.paymentGatewayHelp),
+    },
+    requiresAuth: true,
+  });
+};
+
+/** Super-admin: enables add-ons and fulfills the upgrade inquiry. */
+export const fulfillUpgradeInquiry = async (
+  storeId: number | string,
+  payload: {
+    addonPaymentGateway: boolean;
+    addonQrCode: boolean;
+    addonPaymentGatewayHelp: boolean;
+  },
+): Promise<void> => {
+  await apiRequest(
+    `/stores/${storeId}/subscription/upgrade-inquiry/fulfill`,
+    {
+      method: "POST",
+      body: {
+        addon_payment_gateway: Boolean(payload.addonPaymentGateway),
+        addon_qr_code: Boolean(payload.addonQrCode),
+        addon_payment_gateway_help: Boolean(payload.addonPaymentGatewayHelp),
+      },
+      requiresAuth: true,
+    },
+  );
 };
 
 export type SubscriptionCheckoutPricingBreakdown = {

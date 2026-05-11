@@ -332,8 +332,13 @@ export default function HomePageClient({
 
         if (isMounted) {
           const finalStores = Object.values(combined)
-            .filter(matchesPrimaryCity)
-            .filter(within50Km)
+            // If we have a city token but no coords/distance, keep stores that match the token.
+            // If we have distance, use the 50km rule.
+            .filter((store) => {
+              const km = kmFromViewer(store);
+              if (km != null) return km <= 50;
+              return matchesPrimaryCity(store);
+            })
             .sort((a, b) => {
               const ak = kmFromViewer(a);
               const bk = kmFromViewer(b);

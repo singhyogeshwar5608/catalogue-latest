@@ -6,6 +6,7 @@ use App\Actions\ProvisionDefaultFreeStoreSubscription;
 use App\Http\Controllers\Controller;
 use App\Models\Store;
 use App\Models\StoreSubscription;
+use App\Models\StoreSubscriptionInquiry;
 use App\Models\SubscriptionPlan;
 use App\Support\StoreNotificationRecorder;
 use Illuminate\Http\Request;
@@ -51,6 +52,128 @@ class StoreSubscriptionController extends Controller
 
         return $this->successResponse('Subscription add-on selection saved.', [
             'subscription_addons' => $addonsPayload,
+        ]);
+    }
+
+    /**
+     * Store-owner upgrade request for paid-plan payment add-on activation/help.
+     */
+    public function createUpgradeInquiry(Request $request, Store $store)
+    {
+        if ($request->user()->role !== 'super_admin' && (int) $request->user()->id !== (int) $store->user_id) {
+            return $this->errorResponse('You are not authorized to manage this store subscription.', 403);
+        }
+
+        if (! Schema::hasTable('store_subscription_inquiries')) {
+            return $this->errorResponse('Upgrade inquiries are not available. Run database migrations.', 503);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'plan_id' => 'required|exists:subscription_plans,id',
+            'addon_payment_gateway' => 'required|boolean',
+            'addon_qr_code' => 'required|boolean',
+            'addon_payment_gateway_help' => 'required|boolean',
+        ]);
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed.', 422, $validator->errors());
+        }
+
+        $plan = SubscriptionPlan::findOrFail((int) $request->input('plan_id'));
+        if ((int) $plan->price <= 0) {
+            return $this->errorResponse('Upgrade inquiry is only for paid plans.', 400);
+        }
+
+        $addonsPayload = [
+            'payment_gateway' => $request->boolean('addon_payment_gateway'),
+            'qr_code' => $request->boolean('addon_qr_code'),
+            'payment_gateway_help' => $request->boolean('addon_payment_gateway_help'),
+        ];
+
+        $owner = $request->user();
+        StoreSubscriptionInquiry::query()->create([
+            'store_id' => $store->id,
+            'store_subscription_id' => null,
+            'subscription_plan_id' => $plan->id,
+            'amount_paise' => 0,
+            'currency' => 'INR',
+            'status' => 'created',
+            'addons' => $addonsPayload,
+            'store_owner' => [
+                'user_id' => $owner?->id,
+                'name' => $owner?->name ?? null,
+                'mobile' => $owner?->phone ?? ($store->phone ?? null),
+                'email' => $owner?->email ?? ($store->email ?? null),
+                'location' => $store->location ?? null,
+            ],
+            'store_snapshot' => [
+                'store_id' => (int) $store->id,
+                'name' => $store->name ?? null,
+                'username' => $store->username ?? null,
+                'location' => $store->location ?? null,
+                'state' => $store->state ?? null,
+                'district' => $store->district ?? null,
+                'phone' => $store->phone ?? null,
+                'email' => $store->email ?? null,
+            ],
+        ]);
+
+        return $this->successResponse('Upgrade inquiry submitted successfully.', [
+            'submitted' => true,
+        ], 201);
+    }
+
+    /**
+     * Super-admin fulfills the inquiry by enabling the selected add-ons.
+     * After this, the store owner can access `/dashboard/payment-integration`.
+     */
+    public function fulfillUpgradeInquiry(Request $request, Store $store)
+    {
+        if ($request->user()->role !== 'super_admin') {
+            return $this->errorResponse('Forbidden.', 403);
+        }
+
+        if (! Schema::hasTable('store_subscription_inquiries')) {
+            return $this->errorResponse('Upgrade inquiries are not available.', 503);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'addon_payment_gateway' => 'required|boolean',
+            'addon_qr_code' => 'required|boolean',
+            'addon_payment_gateway_help' => 'sometimes|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed.', 422, $validator->errors());
+        }
+
+        $addonsPayload = [
+            'payment_gateway' => $request->boolean('addon_payment_gateway'),
+            'qr_code' => $request->boolean('addon_qr_code'),
+            'payment_gateway_help' => $request->boolean('addon_payment_gateway_help'),
+        ];
+
+        if (Schema::hasColumn('stores', 'subscription_addons')) {
+            $store->update(['subscription_addons' => $addonsPayload]);
+        }
+
+        // Mark the most recent pending inquiry as fulfilled.
+        $pending = StoreSubscriptionInquiry::query()
+            ->where('store_id', $store->id)
+            ->whereIn('status', ['created', 'paid'])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($pending) {
+            $pending->update([
+                'status' => 'activated',
+                'addons' => $addonsPayload,
+            ]);
+        }
+
+        StoreNotificationRecorder::subscriptionUpgradeInquiryFulfilled($store, $addonsPayload);
+
+        return $this->successResponse('Upgrade inquiry fulfilled.', [
+            'enabled_addons' => $addonsPayload,
         ]);
     }
 

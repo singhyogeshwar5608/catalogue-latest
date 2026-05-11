@@ -32,6 +32,8 @@ export default function TrendingProductsRail({ products }: TrendingProductsRailP
           product={product}
           href={product.storeUsername ? `/store/${product.storeUsername}` : undefined}
           openInModal={false}
+          hideDescription={true}
+          tallImage={true}
         />
       ))}
     </div>

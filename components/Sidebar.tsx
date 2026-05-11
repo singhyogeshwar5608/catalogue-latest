@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import DashboardNotificationsBell from '@/components/dashboard/DashboardNotificationsBell';
 import {
@@ -40,6 +40,7 @@ export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [myStore, setMyStore] = useState<Store | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const prevUnreadRef = useRef(0);
 
   const loadStore = useCallback(async () => {
     const slug = user?.storeSlug?.trim();
@@ -126,10 +127,21 @@ export default function Sidebar() {
           getMyFollowNotifications({ limit: 1 }),
         ]);
         if (!isMounted) return;
-        setUnreadNotifications(owner.unread_count + follower.unread_count);
+        const nextUnread = owner.unread_count + follower.unread_count;
+        setUnreadNotifications(nextUnread);
+
+        // When a fresh store-notification arrives (e.g. admin fulfills QR/PG enablement),
+        // refresh store profile so payment settings link unlocks without manual reload.
+        if (nextUnread > prevUnreadRef.current) {
+          prevUnreadRef.current = nextUnread;
+          window.dispatchEvent(new CustomEvent(STORE_PROFILE_REFRESH_EVENT));
+        } else {
+          prevUnreadRef.current = nextUnread;
+        }
       } catch {
         if (!isMounted) return;
         setUnreadNotifications(0);
+        prevUnreadRef.current = 0;
       }
     };
 
@@ -165,7 +177,7 @@ export default function Sidebar() {
     ...(showPaymentsHub
       ? [{ href: '/dashboard/payment-integration', icon: Plug2, label: 'Payment settings' } as const]
       : []),
-    { href: '/dashboard/referral', icon: Users, label: 'Referrals' },
+    // { href: '/dashboard/referral', icon: Users, label: 'Referrals' },
   ];
 
   useEffect(() => {

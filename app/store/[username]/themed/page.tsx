@@ -37,7 +37,7 @@ export default async function ThemedStorePage({ params }: { params: Promise<{ us
           storeBanner={store.banner}
           storeDescription={store.description}
           storeRating={store.rating}
-          storeLocation={store.location}
+          storeLocation={store.address || store.location}
           storePhone={store.whatsapp}
         />
       </StorefrontTrialShell>

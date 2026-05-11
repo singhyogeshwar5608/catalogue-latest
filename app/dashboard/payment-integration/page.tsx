@@ -80,6 +80,7 @@ export default function PaymentIntegrationPage() {
       const s = await getStorePaymentIntegration(storeId);
       setSettings(s);
       setRazorpayKeyId(s.razorpayKeyId ?? "");
+      // Pre-fill secret if it exists on the backend, but use a placeholder so we don't leak it
       setRazorpaySecret("");
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not load payment settings.");
@@ -130,6 +131,11 @@ export default function PaymentIntegrationPage() {
   const showPg = Boolean(addons?.paymentGateway);
   const showQr = Boolean(addons?.qrCode);
   const showHelp = Boolean(addons?.paymentGatewayHelp);
+
+  // If the admin has already uploaded data, it will be in 'settings'.
+  // We should prioritize showing that even if the local 'qrFile' or 'razorpayKeyId' state is empty initially.
+  const currentQrUrl = qrFile ? URL.createObjectURL(qrFile) : (settings?.paymentQrUrl ? checkoutQrImageSrc(settings.paymentQrUrl) : null);
+  const currentRazorpayKeyId = razorpayKeyId || settings?.razorpayKeyId || "";
 
   const handleSaveQr = async () => {
     if (!store) return;
@@ -332,7 +338,7 @@ export default function PaymentIntegrationPage() {
                   <label className="text-xs font-medium text-gray-600">Key ID</label>
                   <input
                     type="text"
-                    value={razorpayKeyId}
+                    value={currentRazorpayKeyId}
                     onChange={(e) => setRazorpayKeyId(e.target.value)}
                     autoComplete="off"
                     className={inputClass}
@@ -402,17 +408,17 @@ export default function PaymentIntegrationPage() {
             </div>
             <div
               className={
-                settings?.paymentQrUrl && !qrFile ? "space-y-4 p-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0" : "space-y-4 p-4"
+                currentQrUrl ? "space-y-4 p-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0" : "space-y-4 p-4"
               }
             >
-              {settings?.paymentQrUrl && !qrFile && (
+              {currentQrUrl && (
                 <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                  <p className="mb-2 text-xs font-medium text-gray-600">Current QR</p>
+                  <p className="mb-2 text-xs font-medium text-gray-600">{qrFile ? "New QR Preview" : "Current QR"}</p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    key={settings.paymentQrUrl}
-                    src={checkoutQrImageSrc(settings.paymentQrUrl)}
-                    alt="Saved payment QR"
+                    key={currentQrUrl}
+                    src={currentQrUrl}
+                    alt="Payment QR"
                     className="mx-auto max-h-48 max-w-full rounded border border-gray-200 object-contain sm:max-h-52"
                   />
                 </div>

@@ -58,6 +58,36 @@ final class StoreNotificationRecorder
         ]);
     }
 
+    public static function subscriptionUpgradeInquiryFulfilled(Store $store, array $addons): void
+    {
+        $qr = (bool) ($addons['qr_code'] ?? false);
+        $pg = (bool) ($addons['payment_gateway'] ?? false);
+        $help = (bool) ($addons['payment_gateway_help'] ?? false);
+
+        $label = 'Payment settings updated';
+        
+        $statusParts = [];
+        $statusParts[] = 'QR Code: ' . ($qr ? 'Enabled' : 'Disabled');
+        $statusParts[] = 'Payment Gateway: ' . ($pg ? 'Enabled' : 'Disabled');
+        if (array_key_exists('payment_gateway_help', $addons)) {
+            $statusParts[] = 'PG Approval Help: ' . ($help ? 'Enabled' : 'Disabled');
+        }
+
+        $body = 'Admin updated your payment integration settings. Currently: ' . implode(', ', $statusParts) . '.';
+        
+        if ($qr || $pg) {
+            $body .= ' You can update integration details in Payment settings.';
+        }
+
+        self::insert(
+            $store->id,
+            'subscription',
+            $label,
+            $body,
+            ['addons' => $addons],
+        );
+    }
+
     private static function actorLabel(string $actorKey): string
     {
         if (str_starts_with($actorKey, 'u:')) {

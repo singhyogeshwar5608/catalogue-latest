@@ -132,7 +132,7 @@ export default function StoreProfileCard({ store, categoryBannerIndex }: StorePr
           <div className="mt-4 flex flex-col items-center gap-2 text-sm text-white/90">
             <div className="flex items-center gap-1.5">
               <MapPin className="h-4 w-4 flex-shrink-0 text-white/80" />
-              <span className="font-medium line-clamp-1">{formatStoreDistrictState(store)}</span>
+              <span className="font-medium line-clamp-1">{store.address || formatStoreDistrictState(store)}</span>
             </div>
             
             <div className="flex items-center gap-1.5">

@@ -82,6 +82,7 @@ export interface BackendStore {
     qr_code?: boolean;
     payment_gateway_help?: boolean;
   } | null;
+  has_pending_subscription_inquiry?: boolean | null;
   products?: BackendProduct[];
   services?: BackendService[];
   active_boost?: BackendStoreBoost | null;

@@ -17,6 +17,8 @@ interface ProductCardProps {
   imageObjectFit?: 'contain' | 'cover';
   /** When true, hides the short description line in the card (listing pages). */
   hideDescription?: boolean;
+  /** When true, uses a taller image aspect ratio (3/4 instead of 4/3). */
+  tallImage?: boolean;
 }
 
 function buildGallery(product: Product): string[] {
@@ -38,6 +40,7 @@ export default function ProductCard({
   openInModal = true,
   imageObjectFit = 'cover',
   hideDescription = false,
+  tallImage = false,
 }: ProductCardProps) {
   const [showModal, setShowModal] = useState(false);
   const gallery = useMemo(() => buildGallery(product), [product]);
@@ -66,11 +69,11 @@ export default function ProductCard({
 
   const cardContent = (
     <div
-      className="flex h-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-slate-500 bg-white font-sans shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+      className="flex h-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white font-sans shadow-sm transition hover:shadow-md"
       style={{ backgroundColor: CARD_BG }}
     >
       <div className="relative min-w-0 overflow-hidden">
-        <div className="relative aspect-[4/3] w-full min-w-0 max-w-full bg-slate-100">
+        <div className={`relative w-full min-w-0 max-w-full bg-slate-100 ${tallImage ? 'aspect-[3/2.5]' : 'aspect-[4/3]'}`}>
           <Image
             src={heroImageSrc}
             alt={product.name}
@@ -108,10 +111,10 @@ export default function ProductCard({
         ) : null}
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#E3E6E8] p-3 md:p-4">
+      <div className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[#E3E6E8] ${hideDescription ? 'p-4 md:p-5' : 'p-3 md:p-4'}`}>
         <div className="min-w-0">
           <h3
-            className="truncate text-[15px] font-bold leading-tight text-slate-900 md:text-lg"
+            className={`truncate font-bold leading-tight text-slate-900 ${hideDescription ? 'text-[14px] md:text-lg' : 'text-[15px] md:text-lg'}`}
             title={product.name}
           >
             {product.name}
@@ -133,9 +136,11 @@ export default function ProductCard({
           <span className="inline-flex min-w-0 flex-1 truncate rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-800 max-[380px]:px-1.5 max-[380px]:py-0.5 max-[380px]:text-[10px] md:px-3 md:py-1 md:text-sm">
             {displayPrice}
           </span>
-          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-white max-[380px]:gap-0.5 max-[380px]:px-2 max-[380px]:py-0.5 max-[380px]:text-[10px] md:px-3.5 md:py-1.5 md:text-xs">
+          <span
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black font-bold text-white transition hover:bg-slate-800 ${hideDescription ? 'px-3 py-1 text-[10px]' : 'px-4 py-1.5 text-xs'}`}
+          >
             Buy Now
-            <ArrowRight className="h-3 w-3 shrink-0 max-[380px]:h-2.5 max-[380px]:w-2.5 md:h-3.5 md:w-3.5" />
+            <ArrowRight className={hideDescription ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
           </span>
         </div>
       </div>

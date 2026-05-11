@@ -127,26 +127,22 @@ class StorePaymentIntegrationController extends Controller
             );
         }
 
-        // Allow merchants to upload their QR as soon as they enable the QR add-on (even before the paid period starts),
-        // so checkout can include the QR without forcing a second visit to the payment hub.
-        if (! $this->hasActivePaidSubscription($store)) {
-            $onlyQr =
-                ($request->hasFile('payment_qr')
-                    || (is_string($request->input('payment_qr_base64')) && trim((string) $request->input('payment_qr_base64')) !== '')
-                    || $request->boolean('remove_payment_qr'))
-                && ! $request->exists('razorpay_key_id')
-                && ! $request->exists('razorpay_key_secret')
-                && ! $request->boolean('clear_razorpay_secret');
-
-            if (! $onlyQr) {
-                return $this->errorResponse(
-                    'Payment settings unlock after you activate a paid subscription and enable payment add-ons.',
-                    403
-                );
-            }
+        // If admin has manually enabled add-ons (or user selected them), allow GET access 
+        // to see the current state (like QR code) even on free plans.
+        if ($request->isMethod('GET')) {
+            return null;
         }
 
-        return null;
+        // Allow merchants to update their integration details if the add-on is enabled, 
+        // even if the paid period hasn't started or they are on a free plan (if admin allowed it).
+        if ($this->storeHasPaymentAddonSelection($store)) {
+            return null;
+        }
+
+        return $this->errorResponse(
+            'Payment settings unlock after you activate a paid subscription and enable payment add-ons.',
+            403
+        );
     }
 
     private function deletePaymentQrFile(?string $path): void
@@ -219,6 +215,13 @@ class StorePaymentIntegrationController extends Controller
         $addons = $store->subscription_addons ?? [];
         $allowPg = (bool) ($addons['payment_gateway'] ?? false);
         $allowQr = (bool) ($addons['qr_code'] ?? false);
+
+        // Super-admin can always update, even if add-on is not enabled yet
+        // (The add-on will be enabled in the same operation via handleSaveUploadStep in frontend)
+        if ($request->user()->role === 'super_admin') {
+            $allowPg = true;
+            $allowQr = true;
+        }
 
         $validator = Validator::make($request->all(), [
             'razorpay_key_id' => 'sometimes|nullable|string|max:255',

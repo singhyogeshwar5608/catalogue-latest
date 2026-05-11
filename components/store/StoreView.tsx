@@ -453,10 +453,12 @@ const HERO_DESKTOP_CAROUSEL_INTERVAL_MS = 4200;
 
 function HeroDesktopProductMarquee({
   products,
+  services,
   storeUsername,
   isStoreOwner,
 }: {
   products: Product[];
+  services: Service[];
   storeUsername: string;
   isStoreOwner: boolean;
 }) {
@@ -467,8 +469,13 @@ function HeroDesktopProductMarquee({
       if (!img) continue;
       list.push({ id: p.id, name: p.name, image: img });
     }
+    for (const s of services) {
+      const img = s.image?.trim();
+      if (!img) continue;
+      list.push({ id: s.id, name: s.title, image: img });
+    }
     return list;
-  }, [products]);
+  }, [products, services]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -682,17 +689,19 @@ const HeroSection = ({
   return (
     <div className="pt-0">
       <div className="relative">
-        <DynamicBanner
-          category={store.category}
-          storeId={Number(store.id)}
-          storeName={store.name}
-          storeBannerImage={store.storeBannerImage}
-          resolvedBannerImage={store.banner}
-        />
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <DynamicBanner
+            category={store.category}
+            storeId={Number(store.id)}
+            storeName={store.name}
+            storeBannerImage={store.storeBannerImage}
+            resolvedBannerImage={store.banner}
+          />
+        </div>
 
         <section
           id="home"
-          className="absolute inset-0 z-20 flex flex-col gap-4 px-3.5 pt-1.5 pb-3 text-white sm:gap-6 sm:px-6 sm:pt-16 sm:pb-4 lg:flex-row lg:items-stretch lg:justify-between lg:gap-8 lg:px-10 lg:pt-12 lg:pb-8 xl:gap-10 xl:px-12 xl:pt-14"
+          className="relative z-20 flex flex-col gap-4 px-3.5 pt-1.5 pb-3 text-white sm:gap-6 sm:px-6 sm:pt-16 sm:pb-4 lg:flex-row lg:items-stretch lg:justify-between lg:gap-8 lg:px-10 lg:pt-12 lg:pb-8 xl:gap-10 xl:px-12 xl:pt-14"
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 sm:gap-6 lg:h-full lg:flex-row lg:items-stretch lg:gap-8 xl:gap-10">
           <motion.div
@@ -717,7 +726,7 @@ const HeroSection = ({
                     decoding="async"
                     referrerPolicy="no-referrer"
                   />
-                  {(store.isVerified || isProPlan) && (
+                  {isProPlan && (
                     <span
                       className="absolute right-0 top-0 inline-flex translate-x-1/2 -translate-y-1/2 items-center justify-center bg-sky-500 p-2 text-white shadow-xl ring-2 ring-white"
                       style={{
@@ -725,11 +734,7 @@ const HeroSection = ({
                           'polygon(50% 0%, 61% 12%, 78% 5%, 83% 22%, 100% 28%, 88% 44%, 100% 60%, 83% 66%, 78% 83%, 61% 76%, 50% 88%, 39% 76%, 22% 83%, 17% 66%, 0% 60%, 12% 44%, 0% 28%, 17% 22%, 22% 5%, 39% 12%)',
                       }}
                     >
-                      {isProPlan ? (
-                        <span className="text-[10px] font-bold uppercase">Pro</span>
-                      ) : (
-                        <Check className="h-3.5 w-3.5" />
-                      )}
+                      <Check className="h-3.5 w-3.5" />
                     </span>
                   )}
                 </span>
@@ -748,26 +753,32 @@ const HeroSection = ({
                 </div>
               </div>
               <motion.div variants={fadeInVariants} className="relative min-w-0 w-full text-center sm:flex-1 sm:w-auto sm:text-left">
-                <h1 className="hidden text-balance text-xl font-semibold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:block sm:text-4xl lg:text-[2.65rem] lg:leading-[1.1] xl:text-5xl">
-                  {store.name}
-                </h1>
-                {store.id ? (
-                  <p
-                    className="mt-1 hidden text-[10px] font-medium tabular-nums leading-snug text-white/75 sm:block sm:text-xs sm:text-white/85 lg:mt-1.5 lg:text-sm"
-                    aria-label={`Store ID ${store.id}`}
-                  >
-                    Store ID: {store.id}
-                  </p>
-                ) : null}
-                {isProPlan && (
-                  <span className="mt-3 inline-flex items-center gap-1 self-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white shadow-lg sm:self-start">
-                    Pro Store
-                  </span>
-                )}
+                <div className="flex w-fit flex-col items-center sm:items-start">
+                  <h1 className="hidden text-balance text-xl font-semibold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:block sm:text-4xl lg:text-[2.65rem] lg:leading-[1.1] xl:text-5xl">
+                    {store.name}
+                  </h1>
+                  <div className="mt-1 flex items-center gap-2 sm:gap-3">
+                    {store.id ? (
+                      <p
+                        className="hidden text-[10px] font-medium tabular-nums leading-snug text-white/75 sm:block sm:text-xs sm:text-white/85 lg:text-sm"
+                        aria-label={`Store ID ${store.id}`}
+                      >
+                        Store ID: {store.id}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="mt-2 hidden sm:flex items-start gap-3 text-[13px] font-semibold text-white xl:text-[15px]">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                  <span className="break-words leading-snug [overflow-wrap:anywhere]">{store.address || store.location}</span>
+                </div>
+                <p className="mt-2 hidden sm:block text-sm leading-relaxed text-white/80 break-words lg:text-[0.9375rem] xl:text-base">
+                  {store.shortDescription || `${store.businessType} specialist, trusted across ${store.totalReviews}+ customers.`}
+                </p>
                 <div className="mt-1 flex w-full flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[9px] font-medium text-white/85 sm:hidden">
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin className="h-3 w-3" />
-                    <span className="max-w-[14rem] truncate">{store.location}</span>
+                    <span className="max-w-[14rem] truncate">{store.address || store.location}</span>
                   </span>
                   {store.showPhone !== false ? (
                     <>
@@ -935,8 +946,7 @@ const HeroSection = ({
                 <div className="mt-2.5 mb-1 flex justify-center px-3 sm:hidden">
                   <div
                     className={`grid w-full max-w-md gap-2 ${
-                      /* ~1.2:3.2 ≈ edit wider (~27%), share narrower (~73%) — mobile only */
-                      isStoreOwner && onOwnerEditStore ? 'grid-cols-[minmax(0,1.2fr)_minmax(0,3.2fr)]' : 'grid-cols-1'
+                      isStoreOwner && onOwnerEditStore ? 'grid-cols-2' : 'grid-cols-1'
                     }`}
                   >
                     {isStoreOwner && onOwnerEditStore ? (
@@ -945,170 +955,122 @@ const HeroSection = ({
                         onClick={onOwnerEditStore}
                         title="Edit store"
                         aria-label="Edit store"
-                        className="inline-flex min-h-[2.75rem] min-w-0 max-w-full flex-row items-center justify-center gap-1 rounded-full border-2 border-white/70 bg-white/10 px-1.5 py-1.5 text-[9px] font-semibold leading-none text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20 sm:text-xs"
+                        className="inline-flex min-h-[2.75rem] min-w-0 max-w-full flex-row items-center justify-center gap-1.5 rounded-full border-2 border-white/70 bg-white/10 px-4 py-2 text-[11px] font-bold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20"
                       >
                         <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        <span className="min-w-0 truncate">Edit</span>
+                        <span className="min-w-0 truncate">Edit store</span>
                       </button>
                     ) : null}
                     <a
                       href={`https://wa.me/?text=Hi%20${encodeURIComponent(store.name)}%2C%20I'm%20interested%20in%20your%20products.%20Here's%20your%20store%20catalogue%3A%20${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex min-h-[2.75rem] min-w-0 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-2 py-2 font-semibold leading-tight text-[11.7px] text-white shadow-[0_10px_30px_rgba(37,99,235,0.35)] transition hover:-translate-y-0.5 hover:bg-blue-500 sm:px-6 sm:text-xs"
+                      className="inline-flex min-h-[2.75rem] min-w-0 max-w-full flex-row items-center justify-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-[11px] font-bold text-white shadow-lg transition hover:bg-blue-500"
                     >
-                      <span className="min-w-0 text-center">Share Catalogue Link</span>
-                      <ArrowRight className="h-[18px] w-[18px] shrink-0" />
+                      <span className="min-w-0 truncate">Share Catalogue</span>
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                     </a>
                   </div>
                 </div>
               </motion.div>
             </motion.div>
-          </motion.div>
 
-          <motion.div
-            variants={fadeInVariants}
-            className="hidden sm:flex sm:w-full sm:max-w-lg sm:flex-col sm:self-stretch lg:max-w-[min(26rem,calc(100vw-52rem))] lg:shrink-0 xl:max-w-md"
-          >
-            <div className="flex flex-1 flex-col rounded-3xl border border-white/22 bg-slate-950/78 p-5 text-left text-white/95 shadow-[0_34px_100px_-18px_rgba(0,0,0,0.85)] backdrop-blur-xl ring-1 ring-white/10 lg:p-6 xl:p-7">
-            <p className="text-xs uppercase tracking-[0.4em] text-white/70">Store address</p>
-            <div className="mt-2 flex items-start gap-3 text-2xl font-semibold text-white xl:text-[1.75rem]">
-              <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
-              <span className="break-words leading-snug [overflow-wrap:anywhere]">{store.location}</span>
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-white/80 break-words lg:text-[0.9375rem] xl:text-base">
-              {store.shortDescription || `${store.businessType} specialist, trusted across ${store.totalReviews}+ customers.`}
-            </p>
-            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:gap-x-5">
-              <div className="flex min-h-[2.5rem] items-center gap-2 rounded-xl bg-white/10 px-2.5 py-1.5">
-                <Star className="h-4 w-4 shrink-0 text-amber-300" />
-                <span className="break-words font-medium text-white">{store.rating} · {store.totalReviews}+ reviews</span>
-              </div>
-              {store.showPhone !== false && (
-                <div className="flex min-h-[2.5rem] items-center gap-2 rounded-xl bg-white/10 px-2.5 py-1.5">
-                  <Phone className="h-4 w-4 shrink-0 text-emerald-300" />
-                  <span className="break-words font-medium tabular-nums text-white">{store.whatsapp}</span>
-                </div>
-              )}
-            </div>
-            <div className="mt-4 w-full rounded-[14px] border border-white/12 bg-white px-2.5 py-1.5 shadow-inner shadow-black/20">
-              <div className="flex items-stretch justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!canEngage || followBusy || ownerFollowLocked) return;
-                    void onToggleFollow?.();
-                  }}
-                  disabled={!canEngage || followBusy || ownerFollowLocked}
-                  aria-pressed={Boolean(store.viewerFollowing)}
-                  className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl bg-blue-600 px-2 py-1.5 text-white shadow-sm transition ${
-                    !canEngage || followBusy || ownerFollowLocked
-                      ? 'cursor-not-allowed opacity-[0.92]'
-                      : 'cursor-pointer hover:bg-blue-500 active:bg-blue-700'
-                  } ${store.viewerFollowing ? 'ring-2 ring-white/40' : ''}`}
-                  title={
-                    !canEngage
-                      ? 'Sign in to follow'
-                      : ownerFollowLocked
-                        ? 'You already followed your own store'
-                        : store.viewerFollowing
-                          ? 'Unfollow'
-                          : 'Follow'
-                  }
-                >
-                  <div className="flex items-center gap-1.5">
-                    <UserPlus className="h-3.5 w-3.5 shrink-0 text-white" strokeWidth={2} />
-                    <p className="text-xs font-semibold leading-none tabular-nums text-white">
-                      {(store.followersCount ?? 0).toLocaleString('en-IN')}
-                    </p>
-                  </div>
-                  <p className="text-[9px] font-semibold leading-none tracking-wide text-white/90">
-                    Followers
-                  </p>
-                </button>
+            <motion.div variants={fadeInVariants} className="mt-6 hidden flex-wrap justify-center gap-4 sm:flex sm:justify-start">
+               <a
+                 href={`https://wa.me/?text=Hi%20${encodeURIComponent(store.name)}%2C%20I'm%20interested%20in%20your%20products.%20Here's%20your%20store%20catalogue%3A%20${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="inline-flex min-h-[3rem] items-center justify-center gap-2.5 rounded-full bg-blue-600 px-8 py-3 text-center text-sm font-bold text-white shadow-[0_15px_45px_rgba(37,99,235,0.45)] transition hover:-translate-y-1 hover:bg-blue-500 sm:text-base"
+               >
+                 Share Catalogue
+                 <ArrowRight className="h-5 w-5 shrink-0" />
+               </a>
+               {isStoreOwner && onOwnerEditStore ? (
+                 <button
+                   type="button"
+                   onClick={onOwnerEditStore}
+                   title="Edit store"
+                   aria-label="Edit store"
+                   className="inline-flex min-h-[3rem] items-center justify-center gap-2.5 rounded-full border-2 border-white/70 bg-white/10 px-8 py-3 text-center text-sm font-bold text-white shadow-sm backdrop-blur-sm transition hover:-translate-y-1 hover:bg-white/20 sm:text-base"
+                 >
+                   <Pencil className="h-5 w-5 shrink-0" aria-hidden />
+                   <span className="min-w-0 truncate">Edit store</span>
+                 </button>
+               ) : null}
+               {/* Moved Follow, Like, Views buttons for desktop */}
+               <div className="hidden sm:flex items-center gap-2.5 rounded-2xl border border-white/20 bg-black/25 p-1.5 backdrop-blur-md shadow-lg">
+                 <button
+                   type="button"
+                   onClick={() => {
+                     if (!canEngage || followBusy || ownerFollowLocked) return;
+                     void onToggleFollow?.();
+                   }}
+                   disabled={!canEngage || followBusy || ownerFollowLocked}
+                   aria-pressed={Boolean(store.viewerFollowing)}
+                   className={`inline-flex min-h-[2.5rem] items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-center text-xs font-bold text-white transition hover:bg-blue-500 ${
+                     store.viewerFollowing ? 'ring-2 ring-white/40' : ''
+                   }`}
+                   title={
+                     !canEngage
+                       ? 'Sign in to follow'
+                       : ownerFollowLocked
+                         ? 'You already followed your own store'
+                         : store.viewerFollowing
+                           ? 'Unfollow'
+                           : 'Follow'
+                   }
+                 >
+                   <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
+                   <span className="min-w-0 truncate">
+                     {(store.followersCount ?? 0).toLocaleString('en-IN')}
+                   </span>
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => {
+                     if (!canEngage || likeBusy || ownerLikeLocked) return;
+                     void onToggleLike?.();
+                   }}
+                   disabled={!canEngage || likeBusy || ownerLikeLocked}
+                   aria-pressed={Boolean(store.viewerLiked)}
+                   className={`inline-flex min-h-[2.5rem] items-center justify-center gap-2 rounded-xl bg-pink-500 px-5 py-2 text-center text-xs font-bold text-white transition hover:bg-pink-400 ${
+                     store.viewerLiked ? 'ring-2 ring-white/40' : ''
+                   }`}
+                   title={
+                     !canEngage
+                       ? 'Sign in to like'
+                       : ownerLikeLocked
+                         ? 'You already liked your own store'
+                         : store.viewerLiked
+                           ? 'Unlike'
+                           : 'Like'
+                   }
+                 >
+                   <Heart
+                     className={`h-4 w-4 shrink-0 ${
+                       store.viewerLiked ? 'fill-white text-white stroke-white' : 'fill-transparent text-white'
+                     }`}
+                     strokeWidth={store.viewerLiked ? 1.5 : 2}
+                   />
+                   <span className="min-w-0 truncate">
+                     {(store.likesCount ?? 0).toLocaleString('en-IN')}
+                   </span>
+                 </button>
+                 <div className="inline-flex min-h-[2.5rem] items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-2 text-center text-xs font-bold text-white shadow-sm transition hover:bg-white/20">
+                   <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                   <span className="min-w-0 truncate">
+                     {(store.seenCount ?? 0).toLocaleString('en-IN')}
+                   </span>
+                 </div>
+               </div>
+             </motion.div>
+           </motion.div>
+         </div>
 
-                <div className="w-px shrink-0 self-stretch bg-[#e4e9f0]" aria-hidden />
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!canEngage || likeBusy || ownerLikeLocked) return;
-                    void onToggleLike?.();
-                  }}
-                  disabled={!canEngage || likeBusy || ownerLikeLocked}
-                  aria-pressed={Boolean(store.viewerLiked)}
-                  className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl bg-pink-500 px-2 py-1.5 text-white shadow-sm transition ${
-                    !canEngage || likeBusy || ownerLikeLocked
-                      ? 'cursor-not-allowed opacity-60'
-                      : 'cursor-pointer hover:bg-pink-400 active:bg-pink-600'
-                  } ${store.viewerLiked ? 'ring-2 ring-white/40' : ''}`}
-                  title={
-                    !canEngage
-                      ? 'Sign in to like'
-                      : ownerLikeLocked
-                        ? 'You already liked your own store'
-                        : store.viewerLiked
-                          ? 'Unlike'
-                          : 'Like'
-                  }
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Heart
-                      className={`h-3.5 w-3.5 shrink-0 ${
-                        store.viewerLiked
-                          ? 'fill-white text-white stroke-white'
-                          : 'fill-transparent text-white'
-                      }`}
-                      strokeWidth={store.viewerLiked ? 1.5 : 2}
-                    />
-                    <p className="text-xs font-semibold leading-none tabular-nums text-white">
-                      {(store.likesCount ?? 0).toLocaleString('en-IN')}
-                    </p>
-                  </div>
-                  <p className="text-[9px] font-semibold leading-none tracking-wide text-white/90">Likes</p>
-                </button>
-
-                <div className="w-px shrink-0 self-stretch bg-[#e4e9f0]" aria-hidden />
-
-                <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <Eye className="h-3.5 w-3.5 text-[#070A07]" strokeWidth={2} />
-                    <p className="text-xs font-semibold leading-none text-[#111827] tabular-nums">
-                      {(store.seenCount ?? 0).toLocaleString('en-IN')}
-                    </p>
-                  </div>
-                  <p className="text-[9px] font-semibold leading-none tracking-wide text-[#070A07]">Views</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-5 hidden flex-wrap items-stretch justify-center gap-2.5 sm:flex sm:gap-3 lg:mt-auto lg:pt-2">
-              {isStoreOwner && onOwnerEditStore ? (
-                <button
-                  type="button"
-                  onClick={onOwnerEditStore}
-                  className="inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-full border-2 border-white/70 bg-white/12 px-5 py-2.5 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/22 lg:flex-none"
-                >
-                  <Pencil className="h-4 w-4 shrink-0" />
-                  Edit store
-                </button>
-              ) : null}
-              <a
-                href={`https://wa.me/?text=Hi%20${encodeURIComponent(store.name)}%2C%20I'm%20interested%20in%20your%20products.%20Here's%20your%20store%20catalogue%3A%20${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-[2.75rem] min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-2.5 text-center text-sm font-semibold text-white shadow-[0_12px_36px_rgba(37,99,235,0.45)] transition hover:-translate-y-0.5 hover:bg-blue-500 sm:px-8 sm:text-base lg:min-w-[14rem] lg:flex-[1.25]"
-              >
-                Share Catalogue Link
-                <ArrowRight className="h-4 w-4 shrink-0" />
-              </a>
-            </div>
-            </div>
-          </motion.div>
-          </div>
-
-          <div className="hidden shrink-0 self-center lg:block">
+         <div className="hidden shrink-0 self-center lg:block">
             <HeroDesktopProductMarquee
               products={products}
+              services={services}
               storeUsername={store.username}
               isStoreOwner={isStoreOwner}
             />
@@ -1887,6 +1849,10 @@ type ProductGridProps = {
   onBlockVisitorCommerce?: () => void;
   getBuyerDetails: () => StoreBuyerDetails | null;
   ensureBuyerDetailsThen: (fn: () => Promise<void>) => Promise<void>;
+  isFilterDrawerOpen: boolean;
+  setIsFilterDrawerOpen: (open: boolean) => void;
+  filterType: 'all' | 'products' | 'services';
+  setFilterType: React.Dispatch<React.SetStateAction<'all' | 'products' | 'services'>>;
 };
 
 type CombinedEntry =
@@ -2026,8 +1992,11 @@ const ProductGrid = ({
   onBlockVisitorCommerce,
   getBuyerDetails,
   ensureBuyerDetailsThen,
+  isFilterDrawerOpen,
+  setIsFilterDrawerOpen,
+  filterType,
+  setFilterType,
 }: ProductGridProps) => {
-  const [filterType, setFilterType] = useState<'all' | 'products' | 'services'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('featured');
   const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
@@ -2136,7 +2105,7 @@ const ProductGrid = ({
   return (
     <section
       id="products"
-      className="relative z-10 bg-white pt-0 pb-10 max-sm:pt-[min(6.15vh,2.56rem)] md:py-10"
+      className="relative z-10 bg-white pt-0 pb-10 max-sm:pt-6 md:py-10"
     >
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:max-w-none lg:px-8">
         <motion.div
@@ -2151,7 +2120,60 @@ const ProductGrid = ({
         <div className="w-full min-w-0 md:mx-auto md:w-4/5">
         <div className="mb-4 mt-0 flex flex-col gap-3 max-sm:mt-1 md:mt-8 md:flex-row md:items-center md:gap-3">
               <div className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3 md:flex-1">
-                <div className="flex w-full max-w-md mx-auto items-center justify-center gap-3 sm:max-w-none md:mx-0 md:w-auto md:flex-shrink-0 md:justify-start md:gap-2">
+                {/* Mobile: Full-width search bar with filter icon */}
+                <div className="flex w-full items-center gap-2 md:hidden">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/70" />
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={(event) => {
+                        setSearchQuery(event.target.value);
+                        if (filterType !== 'services') {
+                          onResetVisible();
+                        }
+                      }}
+                      placeholder={`Search by ${filterType === 'services' ? 'service' : 'product'}`}
+                      className="w-full rounded-full border border-slate-800 bg-slate-900/95 py-2.5 pl-10 pr-10 text-[12px] font-medium text-white shadow-lg outline-none ring-1 ring-slate-700 transition focus:ring-2 focus:ring-white/20"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          onResetVisible();
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterDrawerOpen(true)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-900/95 text-white/70 shadow-sm transition active:scale-95"
+                    aria-label="Filters"
+                  >
+                    <SlidersHorizontal className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {isStoreOwner && (
+                  <div className="mt-2 flex justify-center md:hidden">
+                    <Link
+                      href="/dashboard/products"
+                      prefetch
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 active:scale-95"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Product
+                    </Link>
+                  </div>
+                )}
+
+                {/* Desktop: Filter buttons */}
+                <div className="hidden md:flex w-full max-w-md mx-auto items-center justify-center gap-3 sm:max-w-none md:mx-0 md:w-auto md:flex-shrink-0 md:justify-start md:gap-2">
                 <button
                   type="button"
                   onClick={() => setFilterType(prev => prev === 'products' ? 'all' : 'products')}
@@ -2176,20 +2198,12 @@ const ProductGrid = ({
                   <Briefcase className="h-4 w-4" />
                   Services
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowMobileSearch(!showMobileSearch)}
-                  className="md:hidden inline-flex items-center justify-center rounded-full border border-slate-300 bg-white p-2 text-slate-700 hover:border-slate-500 transition-all"
-                  aria-label="Search"
-                >
-                  <Search className="h-4 w-4" />
-                </button>
                 </div>
                 {isStoreOwner ? (
                   <Link
                     href="/dashboard/products"
                     prefetch
-                    className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-[#2563eb] bg-[#2563eb] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8] md:flex-shrink-0 md:self-auto"
+                    className="hidden md:inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-[#2563eb] bg-[#2563eb] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8] md:flex-shrink-0 md:self-auto"
                   >
                     <Plus className="h-3 w-3" />
                     Add Product
@@ -2198,7 +2212,7 @@ const ProductGrid = ({
 
               {/* Desktop Search Bar — same row as filters on md+ */}
               <div className="relative hidden min-w-0 flex-1 md:block">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/70 sm:left-4 sm:h-5 sm:w-5" />
                 <input
                   type="search"
                   value={searchQuery}
@@ -2209,7 +2223,7 @@ const ProductGrid = ({
                     }
                   }}
                   placeholder={`Search by ${filterType === 'services' ? 'service' : 'product'} or category`}
-                  className="w-full rounded-full border border-transparent bg-white py-2 pl-11 pr-8 text-sm font-medium text-slate-700 shadow-sm outline-none ring-1 ring-slate-200 transition focus:border-[color:var(--primary-color)] focus:ring-[color:var(--primary-color)]/40"
+                  className="w-full rounded-full border border-slate-800 bg-slate-900/95 py-[calc(0.375rem+2.5px)] pl-11 pr-3 text-sm font-medium text-white shadow-[0_12px_25px_-18px_rgba(15,23,42,0.8)] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/20"
                 />
                 {filtersActive && (
                   <button
@@ -2220,7 +2234,7 @@ const ProductGrid = ({
                       setPriceFilter('all');
                       onResetVisible();
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:text-slate-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-white/50 transition hover:text-white"
                     aria-label="Clear search"
                   >
                     <X className="h-4 w-4" />
@@ -2229,41 +2243,7 @@ const ProductGrid = ({
               </div>
               </div>
 
-              {/* Mobile Search Dropdown */}
-              {showMobileSearch && (
-                <div className="md:hidden relative w-full">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="search"
-                    value={searchQuery}
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value);
-                      if (filterType !== 'services') {
-                        onResetVisible();
-                      }
-                    }}
-                    placeholder={`Search by ${filterType === 'services' ? 'service' : 'product'} or category`}
-                    className="w-full rounded-full border border-transparent bg-white py-2 pl-11 pr-8 text-sm font-medium text-slate-700 shadow-sm outline-none ring-1 ring-slate-200 transition focus:border-[color:var(--primary-color)] focus:ring-[color:var(--primary-color)]/40"
-                    autoFocus
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setSortOption('featured');
-                        setPriceFilter('all');
-                        onResetVisible();
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:text-slate-700"
-                      aria-label="Clear search"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+              </div>
 
             {combinedEntries.length === 0 ? (
               showEmptyProductPlaceholders ? (
@@ -2282,33 +2262,46 @@ const ProductGrid = ({
                         variants={fadeInVariants}
                         transition={{ delay: i * 0.02 }}
                       >
-                        <article className="flex h-full min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                          <div className="relative h-[45vw] max-h-[180px] w-full bg-slate-50 md:aspect-[4/3] md:h-auto md:max-h-none">
-                            <Image
-                              src={OWNER_NO_PRODUCTS_PLACEHOLDER_IMAGE}
-                              alt=""
-                              fill
-                              className="object-contain p-3"
-                              sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 45vw, 50vw"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-2.5 px-2 py-3 md:gap-3 md:px-4 md:py-4">
-                            <p className="text-center text-[11px] font-medium leading-snug text-slate-600 md:text-sm">
-                              {isStoreOwner
-                                ? 'Upload your first products here.'
-                                : 'No products yet — check back soon.'}
-                            </p>
-                            {isStoreOwner ? (
-                              <Link
-                                href="/dashboard/products"
-                                prefetch
-                                className="inline-flex w-full items-center justify-center rounded-full border border-slate-900 bg-slate-900 px-3 py-2 text-[10px] font-semibold text-white shadow-sm transition hover:bg-slate-800 md:py-2.5 md:text-xs"
-                              >
-                                Add products
-                              </Link>
-                            ) : null}
-                          </div>
-                        </article>
+                        {isStoreOwner ? (
+                          <Link href="/dashboard/products" prefetch className="block h-full group">
+                            <article className="flex h-full min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:border-blue-300 hover:shadow-md">
+                              <div className="relative h-[45vw] max-h-[180px] w-full bg-slate-50 md:aspect-[4/3] md:h-auto md:max-h-none">
+                                <Image
+                                  src={OWNER_NO_PRODUCTS_PLACEHOLDER_IMAGE}
+                                  alt=""
+                                  fill
+                                  className="object-contain p-3 transition group-hover:scale-105"
+                                  sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 45vw, 50vw"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-2.5 px-2 py-3 md:gap-3 md:px-4 md:py-4">
+                                <p className="text-center text-[11px] font-medium leading-snug text-slate-600 md:text-sm">
+                                  Upload your first products here.
+                                </p>
+                                <div className="inline-flex w-full items-center justify-center rounded-full border border-slate-900 bg-slate-900 px-3 py-2 text-[10px] font-semibold text-white shadow-sm transition group-hover:bg-slate-800 md:py-2.5 md:text-xs">
+                                  Add products
+                                </div>
+                              </div>
+                            </article>
+                          </Link>
+                        ) : (
+                          <article className="flex h-full min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                            <div className="relative h-[45vw] max-h-[180px] w-full bg-slate-50 md:aspect-[4/3] md:h-auto md:max-h-none">
+                              <Image
+                                src={OWNER_NO_PRODUCTS_PLACEHOLDER_IMAGE}
+                                alt=""
+                                fill
+                                className="object-contain p-3"
+                                sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 45vw, 50vw"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-2.5 px-2 py-3 md:gap-3 md:px-4 md:py-4">
+                              <p className="text-center text-[11px] font-medium leading-snug text-slate-600 md:text-sm">
+                                No products yet — check back soon.
+                              </p>
+                            </div>
+                          </article>
+                        )}
                       </motion.div>
                     ))}
                   </motion.div>
@@ -2561,24 +2554,23 @@ const StoreFooter = ({ store }: { store: Store }) => {
   const areaFormatted = formatStoreDistrictState(store);
   /** Omit village/locality prefixes (shows district + state when `location` is comma-separated). */
   const footerAddressLine = areaFormatted === 'Location unavailable' ? 'your city' : areaFormatted;
-  const mapQuery = store.location?.trim() || store.name || areaFormatted;
+  const mapQuery = store.address?.trim() || store.location?.trim() || store.name || areaFormatted;
 
   return (
     <footer id="contact" className="mt-[20px] mb-0 bg-slate-900 py-0 text-white">
     <motion.div
-      className="mx-auto grid max-w-6xl grid-cols-3 gap-2 min-w-0 items-start px-2.5 py-2.5 sm:gap-8 sm:px-6 sm:py-4 lg:gap-10 lg:px-8"
+      className="mx-auto grid max-w-6xl grid-cols-[1.5fr_1fr_1fr] gap-4 min-w-0 items-start px-2.5 py-2.5 sm:gap-8 sm:px-6 sm:py-4 lg:gap-10 lg:px-8"
       variants={staggerContainer}
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.3 }}
     >
-      <motion.div variants={fadeInVariants} className="min-w-0 space-y-1.5 sm:space-y-5">
+      <motion.div variants={fadeInVariants} className="min-w-0 space-y-0.5 sm:space-y-4">
         <div className="min-w-0">
           <p className="truncate text-[0.72rem] font-semibold leading-tight sm:text-xl">{store.name}</p>
         </div>
-        <p className="text-[0.5rem] leading-snug text-white/60 sm:text-sm">
-          Serving {footerAddressLine} with curated {store.businessType?.toLowerCase() || 'collections'} and concierge
-          support.
+        <p className="break-words text-[8px] leading-snug text-white/60 sm:text-[14px]">
+          {store.address || store.location}
         </p>
       </motion.div>
 
@@ -2704,8 +2696,6 @@ export default function StoreView({
   const [cartPaymentLoading, setCartPaymentLoading] = useState(false);
   const [cartPaymentLoadError, setCartPaymentLoadError] = useState<string | null>(null);
   const [cartPayBusy, setCartPayBusy] = useState(false);
-  const [cartQrDownloadBusy, setCartQrDownloadBusy] = useState(false);
-  const [cartQrDownloadError, setCartQrDownloadError] = useState<string | null>(null);
   const [isCartQrModalOpen, setIsCartQrModalOpen] = useState(false);
   const [cartPaymentTab, setCartPaymentTab] = useState<CartPaymentTab>('upi');
   const cartModalCaptureRef = useRef<HTMLDivElement | null>(null);
@@ -2755,6 +2745,9 @@ export default function StoreView({
   const [reviewStarsResetKey, setReviewStarsResetKey] = useState(0);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'products' | 'services'>('all');
+
   const loadMoreProducts = () => {
     setVisibleCount((previous) => Math.min(previous + INITIAL_VISIBLE_COUNT, products.length));
   };
@@ -2779,8 +2772,10 @@ export default function StoreView({
   );
 
   const cartCanPayOnline = Boolean(cartPaymentCheckout?.onlinePaymentAvailable);
+  const resolvedCartQrUrl = cartPaymentCheckout?.paymentQrUrl || store.paymentQrUrl;
   const cartCanPayQr = Boolean(
-    cartPaymentCheckout?.qrPaymentAvailable && cartPaymentCheckout?.paymentQrUrl,
+    (cartPaymentCheckout?.qrPaymentAvailable && cartPaymentCheckout?.paymentQrUrl) ||
+    (store.subscriptionAddons?.qrCode && store.paymentQrUrl)
   );
 
   const cartAllLinesInStock = useMemo(() => {
@@ -2794,7 +2789,6 @@ export default function StoreView({
 
   useEffect(() => {
     if (isCartOpen) {
-      setCartQrDownloadError(null);
       setCartPaymentTab('upi');
     } else {
       setIsCartQrModalOpen(false);
@@ -2977,16 +2971,6 @@ export default function StoreView({
     setCartEntries((prev) => prev.filter((entry) => String(entry.productId) !== String(productId)));
   }, []);
 
-  const handleCartQrDownload = useCallback(async () => {
-    const url = cartPaymentCheckout?.paymentQrUrl;
-    if (!url) return;
-    setCartQrDownloadBusy(true);
-    setCartQrDownloadError(null);
-    const result = await downloadCheckoutQrImage(url, { filenameBase: `${store.username}-payment-qr` });
-    setCartQrDownloadBusy(false);
-    if (!result.ok) setCartQrDownloadError(result.message);
-  }, [cartPaymentCheckout?.paymentQrUrl, store.username]);
-
   const handleShareWhatsapp = useCallback(async () => {
     if (!cartEntries.length) return;
     if (visitorTrialCommerceBlocked) {
@@ -3051,24 +3035,6 @@ export default function StoreView({
       }
 
       const waUrl = `${whatsappLink}?text=${encodeURIComponent(message)}`;
-
-      if (
-        screenshotFile &&
-        typeof navigator !== 'undefined' &&
-        typeof navigator.share === 'function' &&
-        typeof navigator.canShare === 'function' &&
-        navigator.canShare({ files: [screenshotFile], text: message })
-      ) {
-        try {
-          await navigator.share({ text: message, files: [screenshotFile] });
-          return;
-        } catch (shareErr) {
-          if (shareErr instanceof Error && shareErr.name === 'AbortError') {
-            return;
-          }
-          console.warn('navigator.share failed, falling back', shareErr);
-        }
-      }
 
       if (screenshotFile && typeof document !== 'undefined') {
         try {
@@ -3356,6 +3322,10 @@ export default function StoreView({
           onBlockVisitorCommerce={() => trialLock?.openVisitorTrialLock()}
           getBuyerDetails={getBuyerDetails}
           ensureBuyerDetailsThen={ensureBuyerDetailsThen}
+          isFilterDrawerOpen={isFilterDrawerOpen}
+          setIsFilterDrawerOpen={setIsFilterDrawerOpen}
+          filterType={filterType}
+          setFilterType={setFilterType}
         />
 
         {/* Reviews — friendly rate + summary card (compact on mobile; guest ratings = device-only, no API) */}
@@ -3394,10 +3364,10 @@ export default function StoreView({
                   </div>
 
                   {guestReviewNotice ? (
-                    <p className="mt-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[0.6rem] text-emerald-900 max-sm:mt-2 max-sm:px-2 max-sm:py-1 max-sm:text-[0.55rem] sm:mt-3 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs">
-                      {guestReviewNotice}
-                    </p>
-                  ) : null}
+          <p className="mt-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[0.6rem] text-emerald-900 max-sm:mt-2 max-sm:px-2 max-sm:py-1 max-sm:text-[0.55rem] sm:mt-3 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs">
+            {guestReviewNotice}
+          </p>
+        ) : null}
 
                   <div className="mt-3 max-sm:mt-2.5 sm:mt-5">
                     <div className="flex flex-row items-center justify-between gap-3 max-sm:gap-2">
@@ -3472,15 +3442,15 @@ export default function StoreView({
           <button
             type="button"
             onClick={() => setIsCartOpen(true)}
-            className="fixed bottom-20 right-6 z-50 inline-flex animate-[bounce_1.6s_ease-in-out_infinite] items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white transition hover:scale-[1.03] hover:bg-emerald-600 md:bottom-6 md:px-5 md:py-2.5 md:text-sm"
+            className="fixed bottom-[110px] right-6 z-50 inline-flex animate-[bounce_1.6s_ease-in-out_infinite] items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:scale-[1.03] hover:bg-emerald-600 md:bottom-6 md:px-5 md:py-2.5 md:text-sm"
           >
-            <MessageCircle className="h-3.5 w-3.5" />
-            Share via WhatsApp ({cartItemsCount})
+            <ShoppingCart className="h-3.5 w-3.5" />
+            View Cart ({cartItemsCount})
           </button>
         )}
         {isCartOpen && (
           <>
-          <div className="fixed inset-0 z-50">
+          <div className="fixed inset-0 z-[80]">
             <div className="absolute inset-0 bg-slate-900/60" onClick={() => setIsCartOpen(false)} />
             <div
               ref={cartModalCaptureRef}
@@ -3517,7 +3487,7 @@ export default function StoreView({
                 >
                   {!cartEntries.length ? (
                     <p className="text-sm text-slate-500">
-                      Add products to your cart to share a single WhatsApp request with the store owner.
+                      Add products to your cart to see payment options and the store's QR code.
                     </p>
                   ) : (
                     <>
@@ -3602,34 +3572,25 @@ export default function StoreView({
                     </>
                   )}
                 </div>
-
-                {cartEntries.length > 0 ? (
-                  <div className="max-h-[min(52vh,21rem)] shrink-0 overflow-y-auto overscroll-contain border-t border-slate-100 bg-white px-4 pb-0 pt-2 sm:max-h-[min(58vh,26rem)] sm:px-6 sm:pt-2.5">
-                    <div ref={cartPaymentOptionsRef}>
-                      <CartPaymentOptionsSection
-                        activeTab={cartPaymentTab}
-                        onTabChange={setCartPaymentTab}
-                        cartTotal={cartTotal}
-                        storeUsername={store.username}
-                        paymentQrUrl={cartPaymentCheckout?.paymentQrUrl ?? null}
-                        canPayQr={cartCanPayQr}
-                        canPayOnline={cartCanPayOnline}
-                        formatCurrency={formatCurrencyDisplay}
-                        onDownloadQr={() => void handleCartQrDownload()}
-                        qrDownloadBusy={cartQrDownloadBusy}
-                        qrDownloadError={cartQrDownloadError}
-                        onOpenQrFullscreen={
-                          cartCanPayQr && cartPaymentCheckout?.paymentQrUrl
-                            ? () => setIsCartQrModalOpen(true)
-                            : undefined
-                        }
-                      />
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-t border-slate-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:gap-3 sm:px-6">
+              <div className="flex shrink-0 flex-col border-t border-slate-200 bg-white">
+                {cartEntries.length > 0 && (
+                  <div className="flex justify-center px-4 py-2 sm:px-6">
+                    <button
+                      type="button"
+                      onClick={handleShareWhatsapp}
+                      disabled={isSharingCart}
+                      data-html2canvas-ignore
+                      className="flex items-center justify-center gap-2 rounded-xl bg-[#075E54] px-8 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#054d44] active:scale-[0.98] disabled:opacity-50"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                      {isSharingCart ? 'Sharing...' : 'Share Cart via WhatsApp'}
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:gap-3 sm:px-6">
                 <div className="min-w-0 flex-1 basis-[min(100%,10rem)]">
                   <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
                     Total amount
@@ -3644,13 +3605,13 @@ export default function StoreView({
                 <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-initial">
                   <button
                     type="button"
-                    onClick={handleShareWhatsapp}
-                    disabled={!cartEntries.length || isSharingCart}
+                    onClick={() => setIsCartQrModalOpen(true)}
+                    disabled={!cartEntries.length || !cartCanPayQr}
                     className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1 rounded-xl border-2 border-[#007A4D] bg-white px-3 py-2 text-[11px] font-semibold text-[#007A4D] shadow-sm transition hover:bg-[#007A4D]/5 disabled:opacity-50 sm:min-h-0 sm:px-3.5 sm:text-xs"
-                    title="Share cart on WhatsApp"
+                    title="Show QR code"
                   >
-                    <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="whitespace-nowrap">{isSharingCart ? 'Sharing…' : 'WhatsApp'}</span>
+                    <QrCode className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="whitespace-nowrap">QR Code</span>
                   </button>
                   <button
                     type="button"
@@ -3680,8 +3641,9 @@ export default function StoreView({
               </div>
             </div>
           </div>
-          {isCartQrModalOpen && cartPaymentCheckout?.paymentQrUrl ? (
-            <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+        </div>
+          {isCartQrModalOpen && resolvedCartQrUrl && (
+            <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center">
               <button
                 type="button"
                 className="absolute inset-0 bg-slate-900/50"
@@ -3706,7 +3668,7 @@ export default function StoreView({
                 <div className="mt-4 flex justify-center">
                   <div className="w-full max-w-[260px] overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
                     <img
-                      src={checkoutQrImageSrc(cartPaymentCheckout.paymentQrUrl)}
+                      src={checkoutQrImageSrc(resolvedCartQrUrl)}
                       alt="Payment QR code"
                       className="h-auto w-full object-contain"
                       loading="lazy"
@@ -3715,27 +3677,86 @@ export default function StoreView({
                     />
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void handleCartQrDownload()}
-                  disabled={cartQrDownloadBusy}
-                  className="mx-auto mt-4 flex w-full max-w-[260px] items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
-                >
-                  <Download className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  {cartQrDownloadBusy ? 'Saving…' : 'Download QR'}
-                </button>
-                {cartQrDownloadError ? (
-                  <p className="mt-2 text-center text-[11px] text-rose-600">{cartQrDownloadError}</p>
-                ) : null}
               </div>
             </div>
-          ) : null}
+          )}
           </>
         )}
         {buyerDetailsModal}
 
         <StoreFooter store={store} />
       </main>
+
+      {/* Filter Drawer Popup for Mobile - Moved to absolute root of component to escape all stacking contexts */}
+      {isFilterDrawerOpen && (
+        <div className="fixed inset-0 z-[999999] md:hidden">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity"
+            onClick={() => setIsFilterDrawerOpen(false)}
+          />
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            className="absolute right-0 top-0 h-full w-[85%] max-w-[320px] bg-white p-6 shadow-2xl ring-1 ring-black/5"
+          >
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-lg font-bold text-slate-900">Filters</h3>
+              <button
+                type="button"
+                onClick={() => setIsFilterDrawerOpen(false)}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">View Type</p>
+                <div className="grid grid-cols-1 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterType(prev => prev === 'products' ? 'all' : 'products');
+                      setIsFilterDrawerOpen(false);
+                    }}
+                    className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                      filterType === 'products'
+                        ? 'bg-slate-900 text-white shadow-lg'
+                        : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <ShoppingCart className="h-4 w-4" />
+                      Products
+                    </span>
+                    {filterType === 'products' && <Check className="h-4 w-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterType(prev => prev === 'services' ? 'all' : 'services');
+                      setIsFilterDrawerOpen(false);
+                    }}
+                    className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                      filterType === 'services'
+                        ? 'bg-slate-900 text-white shadow-lg'
+                        : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Briefcase className="h-4 w-4" />
+                      Services
+                    </span>
+                    {filterType === 'services' && <Check className="h-4 w-4" />}
+                  </button>
+                </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
     </div>
   );
 }

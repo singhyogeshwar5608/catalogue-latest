@@ -291,6 +291,7 @@ export const normalizeStore = (store: BackendStore): Store => {
     categoryId: store.category_id != null ? String(store.category_id) : undefined,
     category: normalizedCategory,
     location,
+    address: store.address ?? undefined,
     state: typeof store.state === 'string' && store.state.trim() !== '' ? store.state.trim() : undefined,
     district: typeof store.district === 'string' && store.district.trim() !== '' ? store.district.trim() : undefined,
     latitude: parseCoord(store.latitude),

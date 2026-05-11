@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BadgeCheck,
   Ban,
+  BellRing,
   Calendar,
   Clock,
   CreditCard,
@@ -14,12 +15,15 @@ import {
   Phone,
   RefreshCcw,
   Search,
+  Settings2,
   Trash2,
   X,
 } from 'lucide-react';
 import {
   getMyStores,
   updateStore,
+  updateStorePaymentIntegration,
+  fulfillUpgradeInquiry,
   getStoreSubscription,
   cancelStoreSubscription,
   deleteStore,
@@ -42,6 +46,21 @@ export default function AdminStoresPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'boosted' | 'banned'>('all');
+  const [addonModalStore, setAddonModalStore] = useState<StoreWithSubscription | null>(null);
+  const [addonModalPg, setAddonModalPg] = useState(false);
+  const [addonModalQr, setAddonModalQr] = useState(false);
+  const [addonModalPgHelp, setAddonModalPgHelp] = useState(false);
+  const [addonModalSaving, setAddonModalSaving] = useState(false);
+  const [addonEnableConfirmOpen, setAddonEnableConfirmOpen] = useState(false);
+  const [addonUploadOpen, setAddonUploadOpen] = useState(false);
+  const [addonModalRazorpayKeyId, setAddonModalRazorpayKeyId] = useState('');
+  const [addonModalRazorpaySecret, setAddonModalRazorpaySecret] = useState('');
+  const [addonModalQrFile, setAddonModalQrFile] = useState<File | null>(null);
+
+  // PG column dropdown draft values.
+  const [addonDropdownOpenStoreId, setAddonDropdownOpenStoreId] = useState<string | null>(null);
+  const [addonDraftQr, setAddonDraftQr] = useState(false);
+  const [addonDraftPg, setAddonDraftPg] = useState(false);
   const getDistrictStateLabel = (store: StoreWithSubscription) => {
     const explicit = [store.district, store.state].filter(Boolean).join(', ');
     if (explicit) return explicit;
@@ -147,6 +166,168 @@ export default function AdminStoresPage() {
     // For now, show a message that edit functionality is coming soon
     setMessage({ text: `Edit functionality for ${store.name} coming soon!`, type: 'success' });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const openAddonModal = (store: StoreWithSubscription) => {
+    setAddonModalStore(store);
+    setAddonModalPg(Boolean(store.subscriptionAddons?.paymentGateway));
+    setAddonModalQr(Boolean(store.subscriptionAddons?.qrCode));
+    setAddonModalPgHelp(Boolean(store.subscriptionAddons?.paymentGatewayHelp));
+    setAddonEnableConfirmOpen(false);
+    setAddonUploadOpen(false);
+    setAddonModalRazorpayKeyId('');
+    setAddonModalRazorpaySecret('');
+    setAddonModalQrFile(null);
+  };
+
+  const openAddonConfirmFromDropdown = (
+    store: StoreWithSubscription,
+    pg: boolean,
+    qr: boolean,
+    pgHelp: boolean,
+  ) => {
+    setAddonModalStore(store);
+    setAddonModalPg(pg);
+    setAddonModalQr(qr);
+    setAddonModalPgHelp(pgHelp);
+    setAddonEnableConfirmOpen(true);
+    setAddonUploadOpen(false);
+    setAddonModalRazorpayKeyId('');
+    setAddonModalRazorpaySecret('');
+    setAddonModalQrFile(null);
+    setAddonDropdownOpenStoreId(null);
+  };
+
+  const closeAddonSelection = () => {
+    setAddonEnableConfirmOpen(false);
+    setAddonUploadOpen(false);
+    setAddonModalStore(null);
+    setAddonModalSaving(false);
+    setAddonDropdownOpenStoreId(null);
+    setAddonModalRazorpayKeyId('');
+    setAddonModalRazorpaySecret('');
+    setAddonModalQrFile(null);
+  };
+
+  const openUploadStep = () => {
+    setAddonEnableConfirmOpen(false);
+    setAddonUploadOpen(true);
+  };
+
+  const handleConfirmEnableAddons = async () => {
+    if (!addonModalStore) return;
+
+    const isEnablingPg = addonModalPg && !addonModalStore.subscriptionAddons?.paymentGateway;
+    const isEnablingQr = addonModalQr && !addonModalStore.subscriptionAddons?.qrCode;
+
+    // If we are enabling PG or QR, we MUST show the upload step first.
+    // We only fulfill the inquiry AFTER the data is provided in the next step.
+    if (isEnablingPg || isEnablingQr) {
+      openUploadStep();
+      return;
+    }
+
+    // Otherwise (disabling, or just toggling Help), we fulfill immediately.
+    setAddonModalSaving(true);
+    try {
+      await fulfillUpgradeInquiry(addonModalStore.id, {
+        addonPaymentGateway: addonModalPg,
+        addonQrCode: addonModalQr,
+        addonPaymentGatewayHelp: addonModalPgHelp,
+      });
+
+      setMessage({ text: 'Settings updated successfully.', type: 'success' });
+      closeAddonSelection();
+      await fetchStores({ silent: true });
+    } catch (err) {
+      setMessage({
+        text: err instanceof Error ? err.message : 'Failed to update settings.',
+        type: 'error',
+      });
+    } finally {
+      setAddonModalSaving(false);
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const fileToQrBase64Payload = (file: File) =>
+    new Promise<{ payment_qr_base64: string; payment_qr_mime: string }>(
+      (resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+          const comma = dataUrl.indexOf(',');
+          if (comma < 0) {
+            reject(new Error('Invalid QR file.'));
+            return;
+          }
+          resolve({
+            payment_qr_base64: dataUrl.slice(comma + 1),
+            payment_qr_mime: file.type || 'image/png',
+          });
+        };
+        reader.onerror = () => reject(new Error('Could not read QR file.'));
+        reader.readAsDataURL(file);
+      },
+    );
+
+  const handleSaveUploadStep = async () => {
+    if (!addonModalStore) return;
+
+    // Validate if data is provided for newly enabled features
+    const isEnablingPg = addonModalPg && !addonModalStore.subscriptionAddons?.paymentGateway;
+    const isEnablingQr = addonModalQr && !addonModalStore.subscriptionAddons?.qrCode;
+
+    if (isEnablingPg && (!addonModalRazorpayKeyId.trim() || !addonModalRazorpaySecret.trim())) {
+      setMessage({ text: 'Please provide both Razorpay Key ID and Secret to enable Payment Gateway.', type: 'error' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    if (isEnablingQr && !addonModalQrFile) {
+      setMessage({ text: 'Please upload a QR code image to enable QR Code payments.', type: 'error' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    setAddonModalSaving(true);
+    try {
+      const body: Record<string, unknown> = {};
+
+      if (addonModalPg && addonModalRazorpayKeyId.trim()) {
+        body.razorpay_key_id = addonModalRazorpayKeyId.trim();
+        body.razorpay_key_secret = addonModalRazorpaySecret.trim();
+      }
+
+      if (addonModalQr && addonModalQrFile) {
+        const qrPayload = await fileToQrBase64Payload(addonModalQrFile);
+        Object.assign(body, qrPayload);
+      }
+
+      // Step 1: Save keys/QR data if any
+      if (Object.keys(body).length > 0) {
+        await updateStorePaymentIntegration(addonModalStore.id, body);
+      }
+
+      // Step 2: Fulfill inquiry (this actually sets the flags in backend)
+      await fulfillUpgradeInquiry(addonModalStore.id, {
+        addonPaymentGateway: addonModalPg,
+        addonQrCode: addonModalQr,
+        addonPaymentGatewayHelp: addonModalPgHelp,
+      });
+
+      setMessage({ text: 'Integration details saved and features enabled.', type: 'success' });
+      closeAddonSelection();
+      await fetchStores({ silent: true });
+    } catch (err) {
+      setMessage({
+        text: err instanceof Error ? err.message : 'Failed to save integration details.',
+        type: 'error',
+      });
+    } finally {
+      setAddonModalSaving(false);
+      setTimeout(() => setMessage(null), 3000);
+    }
   };
 
   const handleBan = async (store: Store) => {
@@ -358,11 +539,12 @@ export default function AdminStoresPage() {
                   <th className="min-w-[10rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">Store</th>
                   <th className="min-w-[7rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">Category</th>
                   <th className="hidden md:table-cell md:min-w-[5.5rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">P/S</th>
-                  <th className="hidden sm:table-cell sm:min-w-[9rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">Email</th>
                   <th className="hidden lg:table-cell lg:min-w-[6rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">WhatsApp</th>
                   <th className="hidden lg:table-cell lg:min-w-[7rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">Area</th>
                   <th className="hidden xl:table-cell xl:min-w-[6.5rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">Plan</th>
-                  <th className="hidden xl:table-cell w-[4.5rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">PG</th>
+                  <th className="hidden xl:table-cell w-[4.5rem] px-3 py-2 text-center text-[11px] font-semibold text-gray-600 uppercase">QR Code</th>
+                  <th className="hidden xl:table-cell w-[4.5rem] px-3 py-2 text-center text-[11px] font-semibold text-gray-600 uppercase">Payment Gateway</th>
+                  <th className="hidden xl:table-cell w-[4.5rem] px-3 py-2 text-center text-[11px] font-semibold text-gray-600 uppercase">PG Approval Help</th>
                   <th className="hidden xl:table-cell w-[4.5rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">Life</th>
                   <th className="min-w-[5.5rem] px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase">Status</th>
                   <th className="min-w-[11rem] px-2 py-2 text-center text-[11px] font-semibold text-gray-600 uppercase">Actions</th>
@@ -382,7 +564,19 @@ export default function AdminStoresPage() {
                       <span className="text-xs font-mono text-gray-500">#{store.id}</span>
                     </td>
                     <td className="max-w-[14rem] px-3 py-2 align-top">
-                      <div className="break-words text-sm font-semibold leading-snug text-gray-900">{store.name}</div>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5 break-words text-sm font-semibold leading-snug text-gray-900">
+                          <span>{store.name}</span>
+                          {store.hasPendingSubscriptionInquiry ? (
+                            <span title="New upgrade inquiry" className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                              <BellRing className="h-3.5 w-3.5" />
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="break-all text-[11px] text-gray-500 font-medium">
+                          {store.user?.email || store.email || '—'}
+                        </div>
+                      </div>
                     </td>
                     <td className="max-w-[10rem] px-3 py-2 align-top">
                       <div className="break-words text-[11px] font-medium leading-tight text-gray-900">
@@ -398,9 +592,6 @@ export default function AdminStoresPage() {
                           {store.servicesCount || 0}S
                         </span>
                       </div>
-                    </td>
-                    <td className="hidden sm:table-cell max-w-[11rem] px-3 py-2 align-top">
-                      <div className="break-all text-xs text-gray-700">{store.user?.email || store.email || '—'}</div>
                     </td>
                     <td className="hidden lg:table-cell max-w-[8rem] px-3 py-2 align-top">
                       {store.whatsapp || store.phone ? (
@@ -425,14 +616,55 @@ export default function AdminStoresPage() {
                         <span className="text-xs text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="hidden xl:table-cell px-3 py-2 align-top">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          store.subscriptionAddons?.paymentGateway ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {store.subscriptionAddons?.paymentGateway ? 'Y' : 'N'}
-                      </span>
+                    <td className="hidden xl:table-cell px-3 py-2 align-top text-center">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(store.subscriptionAddons?.qrCode)}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          openAddonConfirmFromDropdown(
+                            store,
+                            Boolean(store.subscriptionAddons?.paymentGateway),
+                            val,
+                            Boolean(store.subscriptionAddons?.paymentGatewayHelp)
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                      />
+                    </td>
+                    <td className="hidden xl:table-cell px-3 py-2 align-top text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(store.subscriptionAddons?.paymentGateway)}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            openAddonConfirmFromDropdown(
+                              store,
+                              val,
+                              Boolean(store.subscriptionAddons?.qrCode),
+                              Boolean(store.subscriptionAddons?.paymentGatewayHelp)
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        />
+                      </div>
+                    </td>
+                    <td className="hidden xl:table-cell px-3 py-2 align-top text-center">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(store.subscriptionAddons?.paymentGatewayHelp)}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          openAddonConfirmFromDropdown(
+                            store,
+                            Boolean(store.subscriptionAddons?.paymentGateway),
+                            Boolean(store.subscriptionAddons?.qrCode),
+                            val
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                      />
                     </td>
                     <td className="hidden xl:table-cell px-3 py-2 align-top">
                       <select
@@ -508,6 +740,174 @@ export default function AdminStoresPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {addonModalStore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <h3 className="text-lg font-bold text-gray-900">Payment Add-ons</h3>
+              <button
+                type="button"
+                onClick={closeAddonSelection}
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-4 px-5 py-4">
+              {addonEnableConfirmOpen ? (
+                <>
+                  <p className="text-sm font-medium text-gray-900">
+                    Update add-on settings for <span className="font-bold">{addonModalStore.name}</span>?
+                  </p>
+                  <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                      You are modifying store access
+                    </p>
+                    <p className="text-sm text-amber-900/90">
+                      QR code: <span className="font-semibold">{addonModalQr ? 'Enable' : 'Disable'}</span>
+                      <br />
+                      Payment Gateway: <span className="font-semibold">{addonModalPg ? 'Enable' : 'Disable'}</span>
+                      <br />
+                      PG Approval Help: <span className="font-semibold">{addonModalPgHelp ? 'Enable' : 'Disable'}</span>
+                    </p>
+                    <p className="text-xs text-amber-900/80">
+                      Store owner will be notified of these changes.
+                    </p>
+                  </div>
+                </>
+              ) : addonUploadOpen ? (
+                <>
+                  <p className="text-sm text-gray-600">
+                    {addonModalStore.name} ke liye integration details upload karein.
+                  </p>
+
+                  {addonModalPg ? (
+                    <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold uppercase text-gray-500">Gateway keys</p>
+                      <input
+                        type="text"
+                        value={addonModalRazorpayKeyId}
+                        onChange={(e) => setAddonModalRazorpayKeyId(e.target.value)}
+                        placeholder="Razorpay Key ID"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                      />
+                      <input
+                        type="password"
+                        value={addonModalRazorpaySecret}
+                        onChange={(e) => setAddonModalRazorpaySecret(e.target.value)}
+                        placeholder="Razorpay Key Secret"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  ) : null}
+
+                  {addonModalQr ? (
+                    <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold uppercase text-gray-500">QR image upload</p>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => setAddonModalQrFile(e.target.files?.[0] ?? null)}
+                        className="w-full text-sm"
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600">
+                    {addonModalStore.name} ke liye QR code aur Payment Gateway enable/disable karein.
+                  </p>
+
+                  <label className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                    <span>QR Code</span>
+                    <input
+                      type="checkbox"
+                      checked={addonModalQr}
+                      onChange={(e) => setAddonModalQr(e.target.checked)}
+                    />
+                  </label>
+                  <label className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                    <span>Payment Gateway</span>
+                    <input
+                      type="checkbox"
+                      checked={addonModalPg}
+                      onChange={(e) => setAddonModalPg(e.target.checked)}
+                    />
+                  </label>
+                  <label className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                    <span>PG Approval Help</span>
+                    <input
+                      type="checkbox"
+                      checked={addonModalPgHelp}
+                      onChange={(e) => setAddonModalPgHelp(e.target.checked)}
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-gray-200 px-5 py-4 sm:flex-row sm:justify-end">
+              {addonEnableConfirmOpen ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setAddonEnableConfirmOpen(false)}
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleConfirmEnableAddons()}
+                    disabled={addonModalSaving}
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {addonModalSaving ? 'Submitting...' : 'OK'}
+                  </button>
+                </>
+              ) : addonUploadOpen ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={closeAddonSelection}
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveUploadStep()}
+                    disabled={addonModalSaving}
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {addonModalSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={closeAddonSelection}
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAddonEnableConfirmOpen(true)}
+                    disabled={addonModalSaving}
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    OK
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -156,7 +156,7 @@ export default function MarketplaceSearchBar({
             if (enableSuggestions) setIsPopoverOpen(Boolean(localQuery.trim()));
           }}
           placeholder="Search stores or products..."
-          className="w-full rounded-full border border-slate-800 bg-slate-900/95 py-[0.22rem] pl-10 pr-2.5 text-[12px] font-medium text-white shadow-[0_12px_25px_-18px_rgba(15,23,42,0.8)] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/20 sm:py-[calc(0.375rem+2.5px)] sm:pl-11 sm:pr-3 sm:text-sm"
+          className="w-full rounded-full border border-slate-800 bg-slate-900/95 py-[calc(0.22rem+3px)] pl-10 pr-2.5 text-[12px] font-medium text-white shadow-[0_12px_25px_-18px_rgba(15,23,42,0.8)] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/20 sm:py-[calc(0.375rem+2.5px)] sm:pl-11 sm:pr-3 sm:text-sm"
           autoComplete="off"
         />
         {enableSuggestions && shouldShowPopover && (

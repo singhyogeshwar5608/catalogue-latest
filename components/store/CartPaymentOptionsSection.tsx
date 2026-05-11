@@ -88,7 +88,9 @@ export default function CartPaymentOptionsSection({
   qrDownloadBusy,
   qrDownloadError,
   onOpenQrFullscreen,
-}: Props) {
+  onShareWhatsapp,
+  isSharingWhatsapp,
+}: Props & { onShareWhatsapp?: () => void; isSharingWhatsapp?: boolean }) {
   const slug = storeUsername.trim() || 'seller';
 
   const tabs: { id: CartPaymentTab; label: string; Icon: typeof QrCode }[] = [
@@ -99,6 +101,20 @@ export default function CartPaymentOptionsSection({
 
   return (
     <div className="mt-0">
+      {onShareWhatsapp && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={onShareWhatsapp}
+            disabled={isSharingWhatsapp}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#20bd5a] active:scale-[0.98] disabled:opacity-50"
+          >
+            <MessageCircle className="h-5 w-5" />
+            {isSharingWhatsapp ? 'Sharing...' : 'Order via WhatsApp'}
+          </button>
+        </div>
+      )}
+
       <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
         Payment options
       </p>
@@ -175,7 +191,7 @@ export default function CartPaymentOptionsSection({
                           onClick={onOpenQrFullscreen}
                           className="w-full rounded-md border border-slate-200 bg-white py-1 text-center text-[8px] font-semibold text-slate-700 transition hover:bg-slate-50"
                         >
-                          View larger
+                          Show Full QR
                         </button>
                       ) : null}
                       {onDownloadQr ? (
@@ -197,8 +213,9 @@ export default function CartPaymentOptionsSection({
                     ) : null}
                   </>
                 ) : (
-                  <div className="flex min-h-[72px] w-full max-w-[128px] items-center justify-center rounded-md border border-dashed border-slate-300 bg-white/60 px-1.5 text-center text-[8px] leading-tight text-slate-500">
-                    No UPI QR yet. Share cart on WhatsApp.
+                  <div className="flex min-h-[72px] w-full max-w-[128px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-white/60 px-1.5 text-center text-[8px] leading-tight text-slate-500">
+                    <QrCode className="h-5 w-5 opacity-40" />
+                    No UPI QR yet. Click Order via WhatsApp above.
                   </div>
                 )}
               </div>
@@ -210,8 +227,8 @@ export default function CartPaymentOptionsSection({
           <div className="rounded-lg border border-slate-200/90 bg-[#f0f2f5] p-2.5 sm:p-3">
             <p className="text-xs font-bold text-slate-900 sm:text-sm">Pay with card</p>
             <p className="mt-1.5 text-[11px] leading-snug text-slate-600 sm:text-xs">
-              Use <span className="font-semibold text-slate-800">Pay & buy online securely</span> to pay
-              with debit or credit card. A secure Razorpay checkout window will open.
+              Use <span className="font-semibold text-slate-800">Pay Now</span> at the bottom to pay
+              with debit or credit card.
             </p>
             {!canPayOnline ? (
               <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
@@ -225,8 +242,8 @@ export default function CartPaymentOptionsSection({
           <div className="rounded-lg border border-slate-200/90 bg-[#f0f2f5] p-2.5 sm:p-3">
             <p className="text-xs font-bold text-slate-900 sm:text-sm">Net banking</p>
             <p className="mt-1.5 text-[11px] leading-snug text-slate-600 sm:text-xs">
-              Tap <span className="font-semibold text-slate-800">Pay & buy online securely</span> to open
-              checkout — you can choose net banking and other methods supported for this store.
+              Tap <span className="font-semibold text-slate-800">Pay Now</span> at the bottom to open
+              checkout — you can choose net banking.
             </p>
             {!canPayOnline ? (
               <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">

@@ -128,7 +128,7 @@ export default function PaymentIntegrationPage() {
   }, [loading, store, router]);
 
   const addons = settings?.subscriptionAddons ?? store?.subscriptionAddons;
-  const showPg = Boolean(addons?.paymentGateway);
+  const showPg = Boolean(addons?.paymentGateway); // Show form if PG addon is enabled (keys can be entered)
   const showQr = Boolean(addons?.qrCode);
   const showHelp = Boolean(addons?.paymentGatewayHelp);
 

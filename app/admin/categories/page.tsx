@@ -1,8 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Plus, Trash2, PencilLine, RefreshCcw, X } from "lucide-react";
+import { Loader2, Plus, Trash2, PencilLine, RefreshCcw, X, GripVertical } from "lucide-react";
 import BannerImageUpload from "@/components/admin/BannerImageUpload";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   createCategory,
   deleteCategory,
@@ -11,6 +29,66 @@ import {
   type Category,
 } from "@/src/lib/api";
 import { uploadImageToCloudinary } from "@/src/lib/cloudinary";
+
+interface SortableBannerItemProps {
+  url: string;
+  index: number;
+  onRemove: (index: number) => void;
+}
+
+function SortableBannerItem({ url, index, onRemove }: SortableBannerItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: url });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : "auto",
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative h-24 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white group"
+    >
+      <img
+        src={url}
+        alt={`Banner ${index + 1}`}
+        className="h-full w-full object-cover"
+        onError={() => console.error('Image failed to load:', url)}
+      />
+      
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute inset-0 cursor-move flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVertical className="text-white h-6 w-6" />
+      </div>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(index);
+        }}
+        className="absolute -top-1 -right-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow hover:bg-red-600 transition-colors"
+        aria-label={`Remove banner ${index + 1}`}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
 
 const slugify = (value: string) =>
   value
@@ -85,6 +163,26 @@ export default function AdminCategoriesPage() {
   const [bannerImages, setBannerImages] = useState<string[]>([]);
   const [bannerUrlInput, setBannerUrlInput] = useState('');
   const [uploadingBanner, setUploadingBanner] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setBannerImages((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
 
   const activeCount = useMemo(() => categories.filter((cat) => cat.is_active).length, [categories]);
 
@@ -583,34 +681,32 @@ export default function AdminCategoriesPage() {
             <form onSubmit={handleBannerSubmit} className="space-y-4 px-6 py-6">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Banner Images</label>
-                <p className="text-xs text-gray-500">Store banners will randomly pick one of these images.</p>
+                <p className="text-xs text-gray-500">Store banners will randomly pick one of these images. Drag to reorder.</p>
                 <div className="flex flex-wrap gap-3">
-                  {bannerImages.length === 0 ? (
-                    <span className="text-sm text-gray-400">No banners added yet.</span>
-                  ) : (
-                    bannerImages.map((url, index) => (
-                      <div
-                        key={`${url}-${index}`}
-                        className="relative h-24 w-32 overflow-hidden rounded-xl border border-gray-200"
-                      >
-                        <img
-                          src={url}
-                          alt={`Banner ${index + 1}`}
-                          className="h-full w-full object-cover"
-                          onError={() => console.error('Image failed to load:', url)}
-                          onLoad={() => console.log('Image loaded OK:', url)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeBanner(index)}
-                          className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow"
-                          aria-label={`Remove banner ${index + 1}`}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))
-                  )}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={bannerImages}
+                      strategy={horizontalListSortingStrategy}
+                    >
+                      {bannerImages.length === 0 ? (
+                        <span className="text-sm text-gray-400">No banners added yet.</span>
+                      ) : (
+                        bannerImages.map((url, index) => (
+                          <SortableBannerItem
+                            key={url}
+                            url={url}
+                            index={index}
+                            onRemove={removeBanner}
+                          />
+                        ))
+                      )}
+                    </SortableContext>
+                  </DndContext>
+                  
                   <button
                     type="button"
                     onClick={() => {

@@ -117,6 +117,8 @@ class StoreSubscriptionController extends Controller
             ],
         ]);
 
+        StoreNotificationRecorder::subscriptionUpgradeRequested($store, $addonsPayload);
+
         return $this->successResponse('Upgrade inquiry submitted successfully.', [
             'submitted' => true,
         ], 201);

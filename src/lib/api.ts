@@ -930,6 +930,7 @@ const normalizeStore = (
     id: String(store.id),
     userId: store.user_id != null ? String(store.user_id) : undefined,
     username: publicStorePath,
+    slug: store.slug,
     name: formatStoreName(store.name),
     logo: resolvedLogo ?? fallbackLogo,
     banner,
@@ -950,6 +951,8 @@ const normalizeStore = (
     themeId: store.theme ?? undefined,
     location: store.location ?? store.address ?? "Pan India",
     address: store.address ?? undefined,
+    state: typeof store.state === "string" && store.state.trim() !== "" ? store.state.trim() : undefined,
+    district: typeof store.district === "string" && store.district.trim() !== "" ? store.district.trim() : undefined,
     latitude: parseCoord(store.latitude),
     longitude: parseCoord(store.longitude),
     distanceKm: parseDistanceKm(store.distance_km),
@@ -980,6 +983,7 @@ const normalizeStore = (
     hasPendingSubscriptionInquiry: Boolean(
       (store as BackendStore).has_pending_subscription_inquiry,
     ),
+    latestInquiryId: (store as any).latest_inquiry_id ? String((store as any).latest_inquiry_id) : undefined,
     productsCount:
       (store as any).products_count ??
       (store.products ? store.products.length : undefined),

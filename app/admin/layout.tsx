@@ -13,7 +13,6 @@ const adminMenuItems = [
   { href: '/admin/categories', icon: Grid, label: 'Categories' },
   { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/plans', icon: CreditCard, label: 'Plans' },
-  { href: '/admin/subscription-inquiries', icon: ClipboardList, label: 'Subscription Inquiries' },
   { href: '/admin/boosts', icon: Zap, label: 'Boosts' },
   { href: '/admin/reviews', icon: Star, label: 'Reviews' },
 ];

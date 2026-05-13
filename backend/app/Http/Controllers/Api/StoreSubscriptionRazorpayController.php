@@ -160,18 +160,23 @@ class StoreSubscriptionRazorpayController extends Controller
 
         $existingActive = $store->storeSubscriptions()->active()->with('plan')->first();
 
-        if ($existingActive && $existingActive->plan && (int) $existingActive->plan->price > 0) {
-            return $this->errorResponse(
-                'You have an active paid subscription until '.$existingActive->ends_at->format('M j, Y').'. You can choose a new plan after that date.',
-                409
-            );
-        }
-
         $addonsPayload = [
             'payment_gateway' => $request->boolean('addon_payment_gateway'),
             'qr_code' => $request->boolean('addon_qr_code'),
             'payment_gateway_help' => $request->boolean('addon_payment_gateway_help'),
         ];
+
+        if ($existingActive && $existingActive->plan && (int) $existingActive->plan->price > 0) {
+            $currentAddons = $existingActive->metadata['addons'] ?? [];
+            $samePlan = (int) $existingActive->subscription_plan_id === (int) $plan->id;
+
+            if ($samePlan && $currentAddons === $addonsPayload) {
+                return $this->errorResponse(
+                    'You already have an active paid subscription until '.$existingActive->ends_at->format('M j, Y').'. You can choose a new plan or different add-ons after that date.',
+                    409
+                );
+            }
+        }
 
         $grossRupees = SubscriptionCheckoutPricing::grossSubtotalRupees($plan, $addonsPayload);
         $discountPct = SubscriptionCheckoutPricing::billingDiscountPercentForPlan($plan);
@@ -214,20 +219,6 @@ class StoreSubscriptionRazorpayController extends Controller
         }
 
         $order = $response->json();
-
-        // Record inquiry early so super admin can see selections even before payment verification.
-        $this->recordSubscriptionInquiry(
-            $request,
-            $store,
-            $plan,
-            $addonsPayload,
-            $amountPaise,
-            'INR',
-            isset($order['id']) ? (string) $order['id'] : null,
-            null,
-            'created',
-            null
-        );
 
         return $this->successResponse('Razorpay order created.', [
             'key_id' => $keyId,
@@ -345,10 +336,15 @@ class StoreSubscriptionRazorpayController extends Controller
         $existingActive = $store->storeSubscriptions()->active()->with('plan')->first();
 
         if ($existingActive && $existingActive->plan && (int) $existingActive->plan->price > 0) {
-            return $this->errorResponse(
-                'You already have an active paid subscription.',
-                409
-            );
+            $currentAddons = $existingActive->metadata['addons'] ?? [];
+            $samePlan = (int) $existingActive->subscription_plan_id === (int) $plan->id;
+
+            if ($samePlan && $currentAddons === $addonsPayload) {
+                return $this->errorResponse(
+                    'You already have an active paid subscription with these settings.',
+                    409
+                );
+            }
         }
 
         $subscription = DB::transaction(function () use ($existingActive, $plan, $store, $request, $addonsPayload, $paymentId, $orderId) {
@@ -452,18 +448,25 @@ class StoreSubscriptionRazorpayController extends Controller
 
         $existingActive = $store->storeSubscriptions()->active()->with('plan')->first();
 
-        if ($existingActive && $existingActive->plan && (int) $existingActive->plan->price > 0) {
-            return $this->errorResponse(
-                'You have an active paid subscription until '.$existingActive->ends_at->format('M j, Y').'. You can choose a new plan after that date.',
-                409
-            );
-        }
-
         $addonsPayload = [
             'payment_gateway' => $request->boolean('addon_payment_gateway'),
             'qr_code' => $request->boolean('addon_qr_code'),
             'payment_gateway_help' => $request->boolean('addon_payment_gateway_help'),
         ];
+
+        if ($existingActive && $existingActive->plan && (int) $existingActive->plan->price > 0) {
+            $currentAddons = $existingActive->metadata['addons'] ?? [];
+            $samePlan = (int) $existingActive->subscription_plan_id === (int) $plan->id;
+            
+            // If they are on the same plan and haven't changed add-ons, block them.
+            // But if they are changing plans OR add-ons, allow "upgrading" (replacing the current subscription).
+            if ($samePlan && $currentAddons === $addonsPayload) {
+                return $this->errorResponse(
+                    'You already have an active paid subscription until '.$existingActive->ends_at->format('M j, Y').'. You can choose a new plan or different add-ons after that date.',
+                    409
+                );
+            }
+        }
 
         $paymentId = 'mock_pay_'.Str::uuid()->toString();
         $orderId = 'mock_order_'.Str::uuid()->toString();

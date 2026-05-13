@@ -63,6 +63,7 @@ export interface Store {
   id: string;
   userId?: string;
   username: string;
+  slug: string;
   name: string;
   logo: string;
   banner: string;
@@ -122,6 +123,7 @@ export interface Store {
   paymentQrUrl?: string | null;
   /** Admin attention flag when merchant requested payment add-on activation help. */
   hasPendingSubscriptionInquiry?: boolean;
+  latestInquiryId?: string;
   productsCount?: number;
   servicesCount?: number;
   /** Public store profile: follower / like totals (from API). */

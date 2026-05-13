@@ -115,17 +115,17 @@ export default function StoreQuickEditModal({ open, store, onClose, onSaved }: P
     e.preventDefault();
     setError(null);
 
-    if (!currentPassword.trim()) {
-      setError('Please enter your current password to save changes.');
-      return;
-    }
-
     setSaving(true);
     try {
-      let activeCurrentPassword = currentPassword;
+      let activeCurrentPassword = currentPassword.trim() || undefined;
 
       // 1. If new password is provided, update it first
       if (newPassword.trim()) {
+        if (!currentPassword.trim()) {
+          setError('Please enter your current password to change to a new password.');
+          setSaving(false);
+          return;
+        }
         if (newPassword.length < 8) {
           setError('New password must be at least 8 characters.');
           setSaving(false);
@@ -395,13 +395,14 @@ export default function StoreQuickEditModal({ open, store, onClose, onSaved }: P
               <div className="space-y-3">
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    Current password
+                    Current password <span className="text-[10px] font-normal lowercase text-gray-400">(only if changing password)</span>
                   </label>
                   <input
                     type="password"
                     autoComplete="current-password"
                     value={currentPassword}
                     onChange={(ev) => setCurrentPassword(ev.target.value)}
+                    placeholder="Leave empty to keep current"
                     disabled={passwordSaving || saving}
                     className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
                   />

@@ -1167,7 +1167,7 @@ export default function DashboardPage() {
       </section>
 
       {showQRModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-3 py-3 sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-3 py-3">
           <div className="w-full max-w-sm rounded-[28px] bg-white p-5 shadow-[0_20px_45px_rgba(15,23,42,0.22)]">
             <div className="flex items-center justify-between">
               <div>

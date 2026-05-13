@@ -59,6 +59,7 @@ import {
   QrCode,
   Trash2,
   Pencil,
+  Ban,
 } from 'lucide-react';
 import type {
   Store,
@@ -116,36 +117,49 @@ type StoreViewProps = {
   onToggleLike?: () => Promise<void> | void;
   followBusy?: boolean;
   likeBusy?: boolean;
+  onStoreUpdated?: (store: Store) => void;
+  onSocialLinkChange?: (platform: string, url: string) => Promise<void> | void;
+  // Optional edit mode props
   isEditMode?: boolean;
   onEnterEdit?: () => void;
   onInlineLogoEdit?: () => void;
   onNameChange?: (name: string) => void;
-  onDescriptionChange?: (description: string) => void;
-  onLocationChange?: (location: string) => void;
+  onDescriptionChange?: (desc: string) => void;
+  onLocationChange?: (loc: string) => void;
   onAddProductShortcut?: () => void;
-  onStoreUpdated?: (store: Store) => void;
 };
 
 const buildSocialLinks = (store: Store) => {
+  const ensureAbsoluteUrl = (url: string | undefined | null) => {
+    if (!url || !url.trim()) return null;
+    const trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://${trimmed}`;
+  };
+
   const links = [
     {
+      platform: 'facebook',
       label: 'Facebook',
-      href: store.socialLinks?.facebook,
+      href: ensureAbsoluteUrl(store.socialLinks?.facebook),
       iconSrc: FACEBOOK_SOCIAL_BRAND_ICON_URL,
     },
     {
+      platform: 'instagram',
       label: 'Instagram',
-      href: store.socialLinks?.instagram,
+      href: ensureAbsoluteUrl(store.socialLinks?.instagram),
       iconSrc: INSTAGRAM_SOCIAL_BRAND_ICON_URL,
     },
     {
+      platform: 'youtube',
       label: 'YouTube',
-      href: store.socialLinks?.youtube,
+      href: ensureAbsoluteUrl(store.socialLinks?.youtube),
       iconSrc: YOUTUBE_SOCIAL_BRAND_ICON_URL,
     },
     {
+      platform: 'linkedin',
       label: 'LinkedIn',
-      href: store.socialLinks?.linkedin,
+      href: ensureAbsoluteUrl(store.socialLinks?.linkedin),
       iconSrc: LINKEDIN_SOCIAL_BRAND_ICON_URL,
     },
   ];
@@ -192,6 +206,13 @@ const formatPriceUnitLabel = (product: Product) => {
   const baseLabel = product.unitCustomLabel?.trim() || PRODUCT_UNIT_LABELS[product.unitType ?? 'piece'];
   if (!baseLabel) return '';
   return baseLabel.charAt(0).toUpperCase() + baseLabel.slice(1);
+};
+
+const formatCompactAddress = (store: Store) => {
+  const pinMatch = store.address?.match(/PIN\s*(\d{6})/i);
+  const pincode = pinMatch ? pinMatch[1] : '';
+  const parts = [pincode, store.district, store.state].filter(Boolean);
+  return parts.join(', ') || store.location || store.address || '';
 };
 
 const formatServiceBillingLabel = (service: Service) => {
@@ -659,6 +680,7 @@ type HeroSectionProps = {
   followBusy?: boolean;
   likeBusy?: boolean;
   onOwnerEditStore?: () => void;
+  onEditSocial?: (platform: string, currentUrl: string) => void;
 };
 
 const HeroSection = ({
@@ -676,6 +698,7 @@ const HeroSection = ({
   followBusy = false,
   likeBusy = false,
   onOwnerEditStore,
+  onEditSocial,
 }: HeroSectionProps) => {
   const socialLinks = buildSocialLinks(store);
   const heroGradient = `linear-gradient(135deg, ${theme.primary}33 0%, ${theme.accent}55 35%, transparent 70%)`;
@@ -770,15 +793,15 @@ const HeroSection = ({
                 </div>
                 <div className="mt-2 hidden sm:flex items-start gap-3 text-[13px] font-semibold text-white xl:text-[15px]">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
-                  <span className="break-words leading-snug [overflow-wrap:anywhere]">{store.address || store.location}</span>
+                  <span className="break-words leading-snug [overflow-wrap:anywhere]">{formatCompactAddress(store)}</span>
                 </div>
                 <p className="mt-2 hidden sm:block text-sm leading-relaxed text-white/80 break-words lg:text-[0.9375rem] xl:text-base">
                   {store.shortDescription || `${store.businessType} specialist, trusted across ${store.totalReviews}+ customers.`}
                 </p>
-                <div className="mt-1 flex w-full flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[9px] font-medium text-white/85 sm:hidden">
+                <div className="mt-[-4px] flex w-full flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[13px] font-medium text-white/85 sm:hidden">
                   <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-3 w-3" />
-                    <span className="max-w-[14rem] truncate">{store.address || store.location}</span>
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span className="max-w-[14rem] truncate">{formatCompactAddress(store)}</span>
                   </span>
                   {store.showPhone !== false ? (
                     <>
@@ -819,13 +842,28 @@ const HeroSection = ({
                       const baseClass =
                         'inline-flex shrink-0 items-center justify-center rounded-md p-0 leading-none transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/35';
 
+                      if (isStoreOwner && onEditSocial) {
+                        return (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={() => onEditSocial(item.platform, (item.href as string) || '')}
+                            className={`${baseClass} cursor-pointer hover:opacity-90 hover:-translate-y-0.5`}
+                            aria-label={`Edit ${item.label} link`}
+                            title={`Click to edit ${item.label} link`}
+                          >
+                            {icon}
+                          </button>
+                        );
+                      }
+
                       return hasHref ? (
                         <a
                           key={item.label}
                           href={item.href as string}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`${baseClass} hover:opacity-90 hover:-translate-y-0.5`}
+                          className={`${baseClass} cursor-pointer hover:opacity-90 hover:-translate-y-0.5`}
                           aria-label={item.label}
                         >
                           {icon}
@@ -833,7 +871,7 @@ const HeroSection = ({
                       ) : (
                         <span
                           key={item.label}
-                          className={`${baseClass} cursor-default opacity-60`}
+                          className={`${baseClass} opacity-60`}
                           aria-label={item.label}
                           aria-disabled="true"
                           title="Add link from dashboard"
@@ -1413,14 +1451,14 @@ function BuyNowProductModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 pt-2 sm:px-5 sm:pb-5 sm:pt-3">
           <div className="flex justify-center">
-            {/* Fixed 1:1 frame; larger for better product visibility */}
-            <div className="relative h-44 w-44 shrink-0 overflow-hidden rounded-xl bg-white aspect-square sm:h-72 sm:w-72">
+            {/* Full width 1:1 frame that fits the popup content area */}
+            <div className="relative aspect-square w-full shrink-0 overflow-hidden rounded-xl bg-white">
               <Image
                 src={heroSrc}
                 alt={product.name}
                 fill
-                className="object-contain p-1.5 sm:p-2"
-                sizes="(max-width: 640px) 176px, 288px"
+                className="object-contain"
+                sizes="(max-width: 640px) 100vw, 448px"
                 priority
               />
               {discount ? (
@@ -1515,8 +1553,8 @@ function BuyNowProductModal({
               Quantity
             </p>
             <div className="mt-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-              <div className="flex items-center gap-2">
-                <div className="inline-flex min-w-[90px] items-center justify-between rounded-xl border border-slate-200 bg-white px-1 py-1">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="inline-flex min-w-[80px] items-center justify-between rounded-xl border border-slate-200 bg-white px-1 py-1 sm:min-w-[90px]">
                   <button
                     type="button"
                     aria-label="Decrease quantity"
@@ -1526,7 +1564,7 @@ function BuyNowProductModal({
                   >
                     <Minus className="h-2.5 w-2.5 text-slate-700" strokeWidth={2.5} />
                   </button>
-                  <span className="min-w-[1.5rem] text-center text-[11px] font-bold tabular-nums text-slate-900">{quantity}</span>
+                  <span className="min-w-[1.2rem] text-center text-[11px] font-bold tabular-nums text-slate-900 sm:min-w-[1.5rem]">{quantity}</span>
                   <button
                     type="button"
                     aria-label="Increase quantity"
@@ -1541,25 +1579,25 @@ function BuyNowProductModal({
                   type="button"
                   onClick={handleAddToCartFromModal}
                   disabled={addDisabled}
-                  className={`inline-flex h-8 min-w-[108px] items-center justify-center rounded-xl px-2.5 text-[10px] font-semibold shadow-sm transition sm:min-w-[150px] sm:text-sm ${
+                  className={`inline-flex h-8 flex-1 min-w-0 items-center justify-center rounded-xl px-1.5 text-[10px] font-semibold shadow-sm transition sm:px-2.5 sm:text-sm ${
                     addDisabled
                       ? 'cursor-not-allowed border border-slate-300 bg-slate-100 text-slate-400'
                       : 'bg-slate-900 text-white hover:bg-slate-800'
                   }`}
                 >
-                  Add to cart
+                  <span className="truncate">Add to cart</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleBuyNowPayment()}
                   disabled={!product.inStock || checkoutLoading || payBusy || !hasAnyPayment}
-                  className={`inline-flex h-8 min-w-[108px] items-center justify-center rounded-xl px-2.5 text-[10px] font-semibold shadow-sm transition sm:min-w-[150px] sm:text-sm ${
+                  className={`inline-flex h-8 flex-1 min-w-0 items-center justify-center rounded-xl px-1.5 text-[10px] font-semibold shadow-sm transition sm:px-2.5 sm:text-sm ${
                     !product.inStock || checkoutLoading || payBusy || !hasAnyPayment
                       ? 'cursor-not-allowed bg-slate-300 text-white'
                       : 'bg-emerald-600 text-white hover:bg-emerald-700'
                   }`}
                 >
-                  Pay & Buy Online
+                  <span className="truncate">Pay & Buy Online</span>
                 </button>
               </div>
             </div>
@@ -1593,28 +1631,6 @@ function BuyNowProductModal({
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  void (async () => {
-                    setBuyModalQrDownloadBusy(true);
-                    setBuyModalQrDownloadError(null);
-                    const r = await downloadCheckoutQrImage(checkout.paymentQrUrl, {
-                      filenameBase: `${storeUsername}-payment-qr`,
-                    });
-                    setBuyModalQrDownloadBusy(false);
-                    if (!r.ok) setBuyModalQrDownloadError(r.message);
-                  })();
-                }}
-                disabled={buyModalQrDownloadBusy}
-                className="mx-auto mt-2 flex w-full max-w-[260px] items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
-              >
-                <Download className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {buyModalQrDownloadBusy ? 'Saving…' : 'Download QR'}
-              </button>
-              {buyModalQrDownloadError ? (
-                <p className="mt-1 text-center text-[10px] text-rose-600">{buyModalQrDownloadError}</p>
-              ) : null}
             </div>
           ) : null}
         </div>
@@ -1770,11 +1786,11 @@ function StoreCatalogProductCard({
             {product.name}
           </h3>
         </div>
-        <div className="mt-2.5 flex items-center justify-between gap-1.5 md:mt-3.5">
-          <span className="inline-flex shrink-0 items-center self-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-800 md:px-3 md:py-1 md:text-sm">
-            {formatCurrencyDisplay(product.price)}
-          </span>
-          <div className="flex min-w-0 shrink-0 items-center justify-end gap-0.5 md:gap-1">
+        <div className="mt-2.5 flex flex-col gap-2 md:mt-3.5">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="inline-flex shrink-0 items-center self-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-800 md:px-3 md:py-1 md:text-sm">
+              {formatCurrencyDisplay(product.price)}
+            </span>
             {cartQty > 0 && onRemoveFromCart ? (
               <button
                 type="button"
@@ -1789,6 +1805,8 @@ function StoreCatalogProductCard({
                 <Trash2 className="size-2.5 text-white md:size-3" strokeWidth={2} aria-hidden />
               </button>
             ) : null}
+          </div>
+          <div className="flex min-w-0 shrink-0 items-center justify-end">
             <button
               type="button"
               onClick={(event) => {
@@ -1799,7 +1817,7 @@ function StoreCatalogProductCard({
               title={
                 product.inStock ? 'Add to cart' : 'Out of stock'
               }
-              className={`inline-flex min-w-[74px] items-center justify-center gap-0.5 rounded-full border px-2 py-1 text-[8px] font-semibold transition md:min-w-[120px] md:gap-1 md:px-3.5 md:py-1.5 md:text-xs ${
+              className={`inline-flex w-full items-center justify-center gap-0.5 rounded-full border px-2 py-1 text-[8px] font-semibold transition md:gap-1 md:px-3.5 md:py-1.5 md:text-xs ${
                 !product.inStock
                   ? 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500'
                   : cartQty > 0
@@ -2123,7 +2141,7 @@ const ProductGrid = ({
                 {/* Mobile: Full-width search bar with filter icon */}
                 <div className="flex w-full items-center gap-2 md:hidden">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/70" />
+                    <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <input
                       type="search"
                       value={searchQuery}
@@ -2134,7 +2152,7 @@ const ProductGrid = ({
                         }
                       }}
                       placeholder={`Search by ${filterType === 'services' ? 'service' : 'product'}`}
-                      className="w-full rounded-full border border-slate-800 bg-slate-900/95 py-2.5 pl-10 pr-10 text-[12px] font-medium text-white shadow-lg outline-none ring-1 ring-slate-700 transition focus:ring-2 focus:ring-white/20"
+                      className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-[12px] font-medium text-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.08)] outline-none ring-1 ring-slate-100 transition focus:ring-2 focus:ring-slate-200"
                     />
                     {searchQuery && (
                       <button
@@ -2143,7 +2161,7 @@ const ProductGrid = ({
                           setSearchQuery('');
                           onResetVisible();
                         }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -2152,7 +2170,7 @@ const ProductGrid = ({
                   <button
                     type="button"
                     onClick={() => setIsFilterDrawerOpen(true)}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-900/95 text-white/70 shadow-sm transition active:scale-95"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition active:scale-95"
                     aria-label="Filters"
                   >
                     <SlidersHorizontal className="h-5 w-5" />
@@ -2212,7 +2230,7 @@ const ProductGrid = ({
 
               {/* Desktop Search Bar — same row as filters on md+ */}
               <div className="relative hidden min-w-0 flex-1 md:block">
-                <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/70 sm:left-4 sm:h-5 sm:w-5" />
+                <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 sm:left-4 sm:h-5 sm:w-5" />
                 <input
                   type="search"
                   value={searchQuery}
@@ -2223,7 +2241,7 @@ const ProductGrid = ({
                     }
                   }}
                   placeholder={`Search by ${filterType === 'services' ? 'service' : 'product'} or category`}
-                  className="w-full rounded-full border border-slate-800 bg-slate-900/95 py-[calc(0.375rem+2.5px)] pl-11 pr-3 text-sm font-medium text-white shadow-[0_12px_25px_-18px_rgba(15,23,42,0.8)] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/20"
+                  className="w-full rounded-full border border-slate-200 bg-white py-[calc(0.375rem+2.5px)] pl-11 pr-3 text-sm font-medium text-slate-900 shadow-[0_4px_25px_rgba(0,0,0,0.1)] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
                 />
                 {filtersActive && (
                   <button
@@ -2234,7 +2252,7 @@ const ProductGrid = ({
                       setPriceFilter('all');
                       onResetVisible();
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-white/50 transition hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:text-slate-600"
                     aria-label="Clear search"
                   >
                     <X className="h-4 w-4" />
@@ -2570,7 +2588,7 @@ const StoreFooter = ({ store }: { store: Store }) => {
           <p className="truncate text-[0.72rem] font-semibold leading-tight sm:text-xl">{store.name}</p>
         </div>
         <p className="break-words text-[8px] leading-snug text-white/60 sm:text-[14px]">
-          {store.address || store.location}
+          {formatCompactAddress(store)}
         </p>
       </motion.div>
 
@@ -2642,9 +2660,37 @@ export default function StoreView({
   followBusy = false,
   likeBusy = false,
   onStoreUpdated,
+  onSocialLinkChange,
+  isEditMode,
+  onEnterEdit,
+  onInlineLogoEdit,
+  onNameChange,
+  onDescriptionChange,
+  onLocationChange,
+  onAddProductShortcut,
 }: StoreViewProps) {
   const { isLoggedIn, user } = useAuth();
   const [storeEditOpen, setStoreEditOpen] = useState(false);
+  const [editingSocial, setEditingSocial] = useState<{ platform: string; url: string } | null>(null);
+  const [isSavingSocial, setIsSavingSocial] = useState(false);
+
+  const handleEditSocial = (platform: string, currentUrl: string) => {
+    setEditingSocial({ platform, url: currentUrl });
+  };
+
+  const handleSaveSocial = async () => {
+    if (editingSocial && onSocialLinkChange) {
+      setIsSavingSocial(true);
+      try {
+        await onSocialLinkChange(editingSocial.platform, editingSocial.url);
+        setEditingSocial(null);
+      } catch (err) {
+        console.error('Failed to save social link:', err);
+      } finally {
+        setIsSavingSocial(false);
+      }
+    }
+  };
   const planIdentifier = store.activeSubscription?.plan?.slug?.toLowerCase()
     ?? store.activeSubscription?.plan?.name?.toLowerCase()
     ?? '';
@@ -2705,6 +2751,17 @@ export default function StoreView({
 
   const theme = useMemo(() => getThemeForCategory(store.businessType), [store.businessType]);
   const marqueeCategory = store.businessType || 'exclusive collections';
+  const isBanned = store.isActive === false;
+  const isExpired = isStoreTrialExpiredWithoutPaidPlan(store);
+  
+  // showOverlay logic: ONLY show blur/lock to visitors, NOT to the store owner.
+  // viewerOwnsStore is true if the logged-in user owns this store.
+  const showOverlay = !viewerOwnsStore && (isBanned || isExpired);
+
+  const ownerPhoneRaw = store.phone || store.whatsapp || '';
+  const ownerPhoneDisplay = ownerPhoneRaw ? (ownerPhoneRaw.startsWith('+') ? ownerPhoneRaw : `+91-${ownerPhoneRaw}`) : '';
+  const ownerPhoneCallUrl = ownerPhoneRaw ? `tel:${ownerPhoneRaw.replace(/[^0-9+]/g, '')}` : '#';
+
   const marqueeMessage = `Welcome to ${store.name} — Trusted in ${store.location || 'your city'} · Call ${
     store.whatsapp || 'N/A'
   } · Signature picks in ${marqueeCategory}`;
@@ -2988,8 +3045,8 @@ export default function StoreView({
         .map((entry) => `${entry.name} x${entry.quantity} = ₹${entry.price * entry.quantity}`)
         .join('\n');
       const catalogueUrl =
-        typeof window !== 'undefined' && window.location?.href
-          ? window.location.href.split('#')[0]
+        typeof window !== 'undefined' && store.slug
+          ? `https://larawans.com/store/${store.slug}`
           : '';
       const message = `Hi ${store.name},\n\nMy cart (${cartItemsCount} items):\n${itemsList}\n\nTotal: ₹${cartTotal}${
         catalogueUrl ? `\n\nStore: ${catalogueUrl}` : ''
@@ -3054,7 +3111,7 @@ export default function StoreView({
         }
       }
 
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
+      window.location.href = waUrl;
     } catch (error) {
       console.error('Failed to share cart', error);
       setCartNotice('Could not open WhatsApp. Please try again.');
@@ -3258,7 +3315,42 @@ export default function StoreView({
   };
 
   return (
-    <div className="min-h-screen" style={pageStyle}>
+    <div className={`relative min-h-screen bg-slate-50 transition-all duration-500 ${showOverlay ? 'blur-[10px] pointer-events-none select-none grayscale-[0.5]' : ''}`} style={pageStyle}>
+      {showOverlay && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-[2px] pointer-events-auto">
+          <div className="bg-white/90 p-8 rounded-3xl shadow-2xl border border-white/20 text-center max-w-md mx-4 animate-in fade-in zoom-in duration-300">
+            {isBanned ? (
+              <>
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Ban className="w-10 h-10 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Store Unavailable</h2>
+                <p className="text-slate-600 mb-6">This store has been temporarily suspended by the administrator.</p>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Phone className="w-10 h-10 text-amber-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Contact store owner immediately</h2>
+                <p className="text-slate-600 mb-6">The store plan has expired. Please reach out to the owner.</p>
+                {ownerPhoneDisplay && (
+                  <a
+                    href={ownerPhoneCallUrl}
+                    className="flex items-center justify-center gap-2 mb-8 text-2xl font-black text-slate-900 hover:text-blue-600 transition-colors bg-white py-3 px-6 rounded-2xl shadow-sm border border-slate-100"
+                  >
+                    <Phone className="w-6 h-6 fill-current" />
+                    {ownerPhoneDisplay}
+                  </a>
+                )}
+              </>
+            )}
+            <Link href="/" className="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white font-semibold rounded-xl hover:bg-black transition-colors w-full">
+              Return to Home
+            </Link>
+          </div>
+        </div>
+      )}
       <main>
         <div className="relative left-1/2 right-1/2 z-20 w-screen -translate-x-1/2 mt-0 md:mt-7">
           <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-slate-900/85 via-slate-900/60 to-slate-900/85" aria-hidden="true" />
@@ -3288,6 +3380,7 @@ export default function StoreView({
           followBusy={followBusy}
           likeBusy={likeBusy}
           onOwnerEditStore={viewerOwnsStore ? () => setStoreEditOpen(true) : undefined}
+          onEditSocial={handleEditSocial}
         />
 
         {viewerOwnsStore ? (
@@ -3300,6 +3393,59 @@ export default function StoreView({
               setStoreEditOpen(false);
             }}
           />
+        ) : null}
+
+        {editingSocial ? (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl border border-slate-200">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-base font-bold text-slate-900 capitalize">Edit {editingSocial.platform} Link</h3>
+                <button onClick={() => setEditingSocial(null)} className="p-1 hover:bg-slate-100 rounded-full transition">
+                  <X className="h-4 w-4 text-slate-500" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div className="relative">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Social Media URL</label>
+                  <input
+                    type="url"
+                    autoFocus
+                    value={editingSocial.url}
+                    onChange={(e) => setEditingSocial({ ...editingSocial, url: e.target.value })}
+                    placeholder={`https://${editingSocial.platform}.com/yourprofile`}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 shadow-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveSocial();
+                      if (e.key === 'Escape') setEditingSocial(null);
+                    }}
+                  />
+                </div>
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    onClick={() => setEditingSocial(null)}
+                    disabled={isSavingSocial}
+                    className="flex-1 px-3 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveSocial}
+                    disabled={isSavingSocial}
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition disabled:opacity-70"
+                  >
+                    {isSavingSocial ? (
+                      <span className="flex items-center justify-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Saving...
+                      </span>
+                    ) : (
+                      'Save Link'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : null}
 
         <ProductGrid

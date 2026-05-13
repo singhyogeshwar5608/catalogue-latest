@@ -233,18 +233,13 @@ function FooterAccordion({
               </Link>
             </li>
             <li>
-              <Link href="/stores" className="footer-mobile-acc-link footer-link text-gray-600 hover:text-red-600">
+              <Link href="/all-stores" className="footer-mobile-acc-link footer-link text-gray-600 hover:text-red-600">
                 All Stores
               </Link>
             </li>
             <li>
               <Link href="/create-store" className="footer-mobile-acc-link footer-link text-gray-600 hover:text-red-600">
                 Create Store
-              </Link>
-            </li>
-            <li>
-              <Link href="/pricing" className="footer-mobile-acc-link footer-link text-gray-600 hover:text-red-600">
-                Pricing
               </Link>
             </li>
             <li>
@@ -436,18 +431,13 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/stores" className="footer-link text-gray-600 hover:text-red-600">
+                  <Link href="/all-stores" className="footer-link text-gray-600 hover:text-red-600">
                     All Stores
                   </Link>
                 </li>
                 <li>
                   <Link href="/create-store" className="footer-link text-gray-600 hover:text-red-600">
                     Create Store
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/pricing" className="footer-link text-gray-600 hover:text-red-600">
-                    Pricing
                   </Link>
                 </li>
                 <li>
@@ -490,7 +480,7 @@ export default function Footer() {
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">Registered Office</p>
                   <p className="text-sm leading-relaxed text-gray-600">
-                    M/s Larawans, Village Manoharpur, District Jind, Haryana - 126102
+                    M/s Larawans, District Jind, Haryana - 126102
                   </p>
                 </div>
                 <div>
@@ -520,7 +510,7 @@ export default function Footer() {
                 </li>
                 <li className="flex w-full items-start gap-2 text-gray-600">
                   <Mail className="mt-1 h-4 w-4 shrink-0" />
-                  <span className="leading-6">Info@larawans.com</span>
+                  <span className="contact-number leading-6">Info@larawans.com</span>
                 </li>
               </ul>
             </div>
@@ -591,9 +581,10 @@ export default function Footer() {
           font-size: 0.8em !important;
         }
 
-        .contact-number {
-          font-size: 0.96em !important;
-        }
+        .contact-number,
+         .footer-mobile-acc-contact {
+            font-size: 1.5em !important;
+          }
 
         @keyframes fadeInUp {
           from {

@@ -14,6 +14,7 @@ import {
   submitStoreReview,
   toggleStoreFollow,
   toggleStoreLike,
+  updateStore,
   isApiError,
 } from '@/src/lib/api';
 import { perfLog } from '@/src/lib/perfLog';
@@ -176,6 +177,29 @@ export default function StorePageClient({
       setLikeBusy(false);
     }
   }, [applyEngagementTogglePayload, likeBusy, store?.id]);
+
+  const handleSocialLinkChange = useCallback(async (platform: string, url: string) => {
+    if (!store?.id) return;
+    try {
+      const fieldMap: Record<string, string> = {
+        facebook: 'facebook_url',
+        instagram: 'instagram_url',
+        youtube: 'youtube_url',
+        linkedin: 'linkedin_url',
+      };
+      const field = fieldMap[platform];
+      if (!field) return;
+
+      const { store: updatedStore } = await updateStore({
+        id: store.id,
+        [field]: url,
+      });
+      setStore(updatedStore);
+    } catch (error) {
+      console.error('Failed to update social link:', error);
+      alert('Failed to update social link. Please try again.');
+    }
+  }, [store?.id]);
 
   useEffect(() => {
     if (!store?.id) return;
@@ -349,6 +373,7 @@ export default function StorePageClient({
         followBusy={followBusy}
         likeBusy={likeBusy}
         onStoreUpdated={(next) => setStore(next)}
+        onSocialLinkChange={handleSocialLinkChange}
       />
     </PublicStorefrontAccessGate>
   );

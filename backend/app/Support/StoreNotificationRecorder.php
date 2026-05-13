@@ -88,6 +88,28 @@ final class StoreNotificationRecorder
         );
     }
 
+    public static function subscriptionUpgradeRequested(Store $store, array $addons): void
+    {
+        $qr = (bool) ($addons['payment_gateway'] ?? false);
+        $pg = (bool) ($addons['payment_gateway'] ?? false);
+        $help = (bool) ($addons['payment_gateway_help'] ?? false);
+
+        $statusParts = [];
+        if ($qr) $statusParts[] = 'QR Code';
+        if ($pg) $statusParts[] = 'Payment Gateway';
+        if ($help) $statusParts[] = 'PG Approval Help';
+
+        $body = 'You requested an upgrade for: ' . implode(', ', $statusParts) . '. Admin will verify and activate these features soon.';
+
+        self::insert(
+            $store->id,
+            'subscription',
+            'Upgrade request submitted',
+            $body,
+            ['addons' => $addons],
+        );
+    }
+
     private static function actorLabel(string $actorKey): string
     {
         if (str_starts_with($actorKey, 'u:')) {

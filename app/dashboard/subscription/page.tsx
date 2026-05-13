@@ -446,10 +446,6 @@ function buildSubscriptionInvoiceHtml(args: {
         <span class="addon-name">QR code</span>
         ${ynBadge(addons.qrCode)}
       </div>
-      <div class="addon-row">
-        <span class="addon-name">Payment gateway — company help</span>
-        ${ynBadge(addons.paymentGatewayHelp)}
-      </div>
     </div>
   </div>
   ${
@@ -651,6 +647,10 @@ export default function SubscriptionPage() {
   const [qrUploadError, setQrUploadError] = useState<string | null>(null);
   const [qrUploading, setQrUploading] = useState(false);
   const [qrUploadToast, setQrUploadToast] = useState<string | null>(null);
+  const [pendingPaymentAfterQr, setPendingPaymentAfterQr] = useState(false);
+  const [isPgUpgradeInquiry, setIsPgUpgradeInquiry] = useState(false);
+  const [razorpayKeyId, setRazorpayKeyId] = useState("");
+  const [razorpaySecret, setRazorpaySecret] = useState("");
   const [mounted, setMounted] = useState(false);
   const closeModalButtonRef = useRef<HTMLButtonElement>(null);
   /** Prevents Mock + Razorpay flows from running together if clicks fire close together. */
@@ -669,7 +669,12 @@ export default function SubscriptionPage() {
     setSelectedPlan(null);
   };
 
-  const closeCheckoutConfirm = () => setCheckoutConfirmOpen(false);
+  const closeCheckoutConfirm = () => {
+    setCheckoutConfirmOpen(false);
+    setIsPgUpgradeInquiry(false);
+    setRazorpayKeyId("");
+    setRazorpaySecret("");
+  };
 
   const closeQrUpload = () => {
     setQrUploadOpen(false);
@@ -679,6 +684,7 @@ export default function SubscriptionPage() {
     setQrUploadPreviewUrl(null);
     setQrUploadError(null);
     setQrUploading(false);
+    setPendingPaymentAfterQr(false);
   };
 
   const handlePlanCardKeyDown = (e: KeyboardEvent, plan: SubscriptionPlan) => {
@@ -812,43 +818,6 @@ export default function SubscriptionPage() {
     };
   }, [storeId, resolveMerchantStoreSlug]);
 
-  /** Save add-ons as soon as toggles change (after hydrate); Payment settings nav still requires an active paid period. */
-  const checkoutPlanId = checkoutPlan?.id;
-  useEffect(() => {
-    // Only persist add-ons when the user is in the real paid checkout flow.
-    // Upgrade-inquiry flow (partial QR/PG) must not unlock payment settings.
-    if (!checkoutConfirmOpen || !checkoutPlanId || !storeId || !addonHydrated) {
-      return undefined;
-    }
-    const selection = addonsByPlanId[checkoutPlanId] ?? hydratedStoreAddons;
-    const t = window.setTimeout(() => {
-      void (async () => {
-        try {
-          await saveStoreSubscriptionAddons(storeId, {
-            paymentGateway: Boolean(selection.paymentGateway),
-            qrCode: Boolean(selection.qrCode),
-            paymentGatewayHelp: Boolean(selection.paymentGatewayHelp),
-          });
-          dispatchStoreProfileRefresh();
-        } catch (err) {
-          setActivationError(
-            err instanceof Error
-              ? err.message
-              : "Could not save add-on selection. Run migrations if this is new.",
-          );
-        }
-      })();
-    }, 420);
-    return () => window.clearTimeout(t);
-  }, [
-    addonsByPlanId,
-    hydratedStoreAddons,
-    addonHydrated,
-    checkoutConfirmOpen,
-    checkoutPlanId,
-    storeId,
-  ]);
-
   const loadSubscriptionPageData = useCallback(async () => {
     try {
       setLoading(true);
@@ -940,7 +909,23 @@ export default function SubscriptionPage() {
   ): StoreSubscriptionAddons => {
     const id = planId ?? checkoutPlan?.id ?? null;
     if (!id) return hydratedStoreAddons;
-    return addonsByPlanId[id] ?? hydratedStoreAddons;
+    
+    if (addonsByPlanId[id]) {
+      return addonsByPlanId[id];
+    }
+
+    // Fallback logic matching the render loop:
+    // Only use hydrated addons if it's the active plan, otherwise all off.
+    const isActive = activeSubscription?.plan.id === id;
+    if (isActive) {
+      return hydratedStoreAddons;
+    }
+
+    return {
+      paymentGateway: false,
+      qrCode: false,
+      paymentGatewayHelp: false,
+    };
   };
 
   const showPaidSubscriptionSuccess = useCallback(
@@ -1656,12 +1641,21 @@ export default function SubscriptionPage() {
               const isModalPlan = selectedPlan?.id === plan.id;
               const canOpenDetailsModal = false;
               const showInlineAddons = plan.isActive;
-              const cardAddons = addonsByPlanId[plan.id] ?? hydratedStoreAddons;
+
+              const cardAddons =
+                addonsByPlanId[plan.id] ??
+                (isActiveCurrentPlan
+                  ? hydratedStoreAddons
+                  : {
+                      paymentGateway: false,
+                      qrCode: false,
+                      paymentGatewayHelp: false,
+                    });
+
               const cardAddonSum =
                 addonPrices != null
-                  ? cardAddons.qrCode
-                    ? addonPrices.qr_code_inr
-                    : 0
+                  ? (cardAddons.qrCode ? (addonPrices.qr_code_inr ?? 0) : 0) +
+                    (cardAddons.paymentGateway ? (addonPrices.payment_gateway_integration_inr ?? 0) : 0)
                   : 0;
               const displayPrice = formatInr(Number(plan.price) + cardAddonSum);
 
@@ -1852,35 +1846,11 @@ export default function SubscriptionPage() {
                             onToggle={() =>
                               setAddonsByPlanId((prev) => {
                                 const next = !cardAddons.qrCode;
-                                if (next && cardAddons.paymentGateway) {
-                                  setQrUploadPlanId(plan.id);
-                                  setQrUploadOpen(true);
-                                }
                                 return {
                                   ...prev,
                                   [plan.id]: { ...cardAddons, qrCode: next },
                                 };
                               })
-                            }
-                            disabled={addonPricesLoading || !addonHydrated}
-                          />
-                          <AddonToggleRow
-                            icon={Building2}
-                            title="Payment gateway — company help"
-                            hint="Our team handles gateway setup on your behalf."
-                            priceInr={
-                              addonPrices?.payment_gateway_help_inr ?? 0
-                            }
-                            checked={Boolean(cardAddons.paymentGatewayHelp)}
-                            onToggle={() =>
-                              setAddonsByPlanId((prev) => ({
-                                ...prev,
-                                [plan.id]: {
-                                  ...cardAddons,
-                                  paymentGatewayHelp:
-                                    !cardAddons.paymentGatewayHelp,
-                                },
-                              }))
                             }
                             disabled={addonPricesLoading || !addonHydrated}
                           />
@@ -1893,20 +1863,52 @@ export default function SubscriptionPage() {
                       const hasBothCoreAddons =
                         Boolean(addons.paymentGateway) && Boolean(addons.qrCode);
                       if (Number(plan.price) > 0 && isActiveCurrentPlan) {
-                        if (!hasBothCoreAddons) {
+                        const hasAlreadyIntegratedPg = Boolean(hydratedStoreAddons.paymentGateway);
+                        const hasAlreadyIntegratedQr = Boolean(hydratedStoreAddons.qrCode);
+                        const isUpgradingToPg = Boolean(cardAddons.paymentGateway) && !hasAlreadyIntegratedPg;
+                        const isUpgradingToQr = Boolean(cardAddons.qrCode) && !hasAlreadyIntegratedQr;
+
+                        if (isUpgradingToPg || isUpgradingToQr) {
+                          // Calculate ONLY the new addons' price
+                          let upgradeOnlyPrice = 0;
+                          if (isUpgradingToPg) upgradeOnlyPrice += (addonPrices?.payment_gateway_integration_inr ?? 0);
+                          if (isUpgradingToQr) upgradeOnlyPrice += (addonPrices?.qr_code_inr ?? 0);
+                          
+                          const displayUpgradePrice = formatInr(upgradeOnlyPrice);
+
                           return (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCheckoutPlan(plan);
-                                setUpgradeConfirmOpen(true);
-                              }}
-                              disabled={isActivating || !planEnabled || hasLifetimeAccess}
-                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-[15px] font-semibold text-white transition hover:bg-primary-700 md:rounded-lg md:py-3 md:text-base"
-                            >
-                              Upgrade Plan • ₹{displayPrice}
-                            </button>
+                            <div className="flex flex-col gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCheckoutPlan(plan);
+                                  setUpgradeConfirmOpen(true);
+                                }}
+                                disabled={isActivating || !planEnabled || hasLifetimeAccess}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-[15px] font-semibold text-white transition hover:bg-primary-700 md:rounded-lg md:py-3 md:text-base"
+                              >
+                                Upgrade Plan • ₹{displayUpgradePrice}
+                              </button>
+
+                              {SUBSCRIPTION_MOCK_PAYMENT_UI && (
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setCheckoutPlan(plan);
+                                    setSubscriptionNotice(null);
+                                    setActivationError(null);
+                                    setSuccessMessage(null);
+                                    await proceedMockPaidPlanCheckout(plan);
+                                  }}
+                                  disabled={isActivating}
+                                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 py-2 text-xs font-bold text-primary transition hover:bg-primary/10 md:rounded-lg"
+                                >
+                                  {isActivating ? <Loader2 className="h-3 w-3 animate-spin" /> : "🚀 Mock Upgrade"}
+                                </button>
+                              )}
+                            </div>
                           );
                         }
                         return (
@@ -1922,61 +1924,81 @@ export default function SubscriptionPage() {
 
                       // FREE PLAN or other cases
                       return (
-                        <button
-                          type="button"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            setCheckoutPlan(plan);
-                            setSubscriptionNotice(null);
-                            setActivationError(null);
-                            setSuccessMessage(null);
-                            if (Number(plan.price) > 0) {
-                              setCheckoutConfirmOpen(true);
-                            } else {
-                              await handleActivatePlan(
-                                plan,
-                                checkoutAddonPayload(plan.id),
-                              );
+                        <div className="flex flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setCheckoutPlan(plan);
+                              setSubscriptionNotice(null);
+                              setActivationError(null);
+                              setSuccessMessage(null);
+                              if (Number(plan.price) > 0) {
+                                setCheckoutConfirmOpen(true);
+                              } else {
+                                await handleActivatePlan(
+                                  plan,
+                                  checkoutAddonPayload(plan.id),
+                                );
+                              }
+                            }}
+                            disabled={
+                              isActivating ||
+                              !planEnabled ||
+                              showFreePlanAsActive ||
+                              isActiveCurrentPlan ||
+                              hasLifetimeAccess
                             }
-                          }}
-                          disabled={
-                            isActivating ||
-                            !planEnabled ||
-                            showFreePlanAsActive ||
-                            isActiveCurrentPlan ||
-                            hasLifetimeAccess
-                          }
-                          className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[15px] font-semibold transition md:rounded-lg md:py-3 md:text-base ${
-                              !planEnabled
-                                ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                                : hasLifetimeAccess
-                                  ? "cursor-not-allowed bg-amber-50 text-amber-900"
-                                  : showFreePlanAsActive
-                                    ? "cursor-not-allowed bg-emerald-50 text-emerald-900"
-                                    : isActiveCurrentPlan
-                                      ? "cursor-not-allowed bg-violet-50 text-violet-900"
-                                      : "bg-primary text-white hover:bg-primary-700"
-                            }`}
-                        >
-                          {isActivating ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Activating...
-                            </>
-                          ) : !planEnabled ? (
-                            "Unavailable"
-                          ) : hasLifetimeAccess ? (
-                            "Lifetime access — no plan needed"
-                          ) : showFreePlanAsActive ? (
-                            "Already Active"
-                          ) : isActiveCurrentPlan ? (
-                            "Active plan"
-                          ) : isCurrentPlan ? (
-                            `Renew • ₹${displayPrice}`
-                          ) : (
-                            `Choose Plan • ₹${displayPrice}`
+                            className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[15px] font-semibold transition md:rounded-lg md:py-3 md:text-base ${
+                                !planEnabled
+                                  ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                                  : hasLifetimeAccess
+                                    ? "cursor-not-allowed bg-amber-50 text-amber-900"
+                                    : showFreePlanAsActive
+                                      ? "cursor-not-allowed bg-emerald-50 text-emerald-900"
+                                      : isActiveCurrentPlan
+                                        ? "cursor-not-allowed bg-violet-50 text-violet-900"
+                                        : "bg-primary text-white hover:bg-primary-700"
+                              }`}
+                          >
+                            {isActivating ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Activating...
+                              </>
+                            ) : !planEnabled ? (
+                              "Unavailable"
+                            ) : hasLifetimeAccess ? (
+                              "Lifetime access — no plan needed"
+                            ) : showFreePlanAsActive ? (
+                              "Already Active"
+                            ) : isActiveCurrentPlan ? (
+                              "Active plan"
+                            ) : isCurrentPlan ? (
+                              `Renew • ₹${displayPrice}`
+                            ) : (
+                              `Choose Plan • ₹${displayPrice}`
+                            )}
+                          </button>
+
+                          {SUBSCRIPTION_MOCK_PAYMENT_UI && Number(plan.price) > 0 && !isActiveCurrentPlan && !hasLifetimeAccess && planEnabled && (
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setCheckoutPlan(plan);
+                                setSubscriptionNotice(null);
+                                setActivationError(null);
+                                setSuccessMessage(null);
+                                await proceedMockPaidPlanCheckout(plan);
+                              }}
+                              disabled={isActivating}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 py-2 text-xs font-bold text-primary transition hover:bg-primary/10 md:rounded-lg"
+                            >
+                              {isActivating ? <Loader2 className="h-3 w-3 animate-spin" /> : "🚀 Mock Checkout"}
+                            </button>
                           )}
-                        </button>
+                        </div>
                       );
                     })()}
                   </div>
@@ -2227,9 +2249,57 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              <div className="px-4 py-3 sm:px-6 sm:py-4">
-                {(() => {
-                  const addons = checkoutAddonPayload(checkoutPlan.id);
+              <div className="max-h-[70vh] overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
+                {isPgUpgradeInquiry ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                      <div className="flex gap-3">
+                        <CreditCard className="h-5 w-5 shrink-0 text-amber-600" />
+                        <div>
+                          <p className="text-sm font-bold text-amber-900">Payment Gateway Integration</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                            Please provide your Razorpay API keys below. After successful payment, our team will verify and enable the integration for your store.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Razorpay Key ID</label>
+                        <input
+                          type="text"
+                          value={razorpayKeyId}
+                          onChange={(e) => setRazorpayKeyId(e.target.value)}
+                          placeholder="rzp_live_..."
+                          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Razorpay Key Secret</label>
+                        <input
+                          type="password"
+                          value={razorpaySecret}
+                          onChange={(e) => setRazorpaySecret(e.target.value)}
+                          placeholder="Your Razorpay Secret"
+                          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-900">
+                        <span>Integration Fee</span>
+                        <span>₹{formatInr(addonPrices?.payment_gateway_integration_inr ?? 0)}</span>
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        One-time setup fee for payment gateway integration.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  (() => {
+                    const addons = checkoutAddonPayload(checkoutPlan.id);
                   const addonSumLocal =
                     addonPrices != null
                       ? addons.qrCode
@@ -2336,21 +2406,11 @@ export default function SubscriptionPage() {
                               {addons.qrCode ? "Enabled" : "Off"}
                             </span>
                           </li>
-                          <li className="flex items-center justify-between gap-3">
-                            <span className="font-medium">
-                              Payment gateway — company help
-                            </span>
-                            <span
-                              className={`text-xs font-semibold ${addons.paymentGatewayHelp ? "text-emerald-700" : "text-slate-500"}`}
-                            >
-                              {addons.paymentGatewayHelp ? "Enabled" : "Off"}
-                            </span>
-                          </li>
                         </ul>
                       </div>
                     </div>
                   );
-                })()}
+                })())}
               </div>
 
               <div className="border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
@@ -2365,8 +2425,43 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     onClick={async () => {
-                      closeCheckoutConfirm();
-                      await proceedPaidPlanCheckout(checkoutPlan);
+                      const addons = checkoutAddonPayload(checkoutPlan.id);
+
+                      if (isPgUpgradeInquiry) {
+                        if (!razorpayKeyId.trim() || !razorpaySecret.trim()) {
+                          setActivationError("Please provide both Razorpay Key ID and Secret.");
+                          return;
+                        }
+
+                        setActivatingPlanId(checkoutPlan.id);
+                        try {
+                          // Save keys first
+                          await updateStorePaymentIntegration(storeId!, {
+                            razorpay_key_id: razorpayKeyId.trim(),
+                            razorpay_key_secret: razorpaySecret.trim(),
+                          });
+
+                          // Continue to payment flow
+                          setCheckoutConfirmOpen(false);
+                          setIsPgUpgradeInquiry(false);
+                          await proceedPaidPlanCheckout(checkoutPlan);
+                        } catch (e) {
+                          setActivationError(isApiError(e) ? e.message : "Failed to save gateway keys.");
+                          setActivatingPlanId(null);
+                        }
+                        return;
+                      }
+
+                      if (addons.qrCode) {
+                        const isFirstTimeQr = !hydratedStoreAddons.qrCode;
+                        setQrUploadPlanId(checkoutPlan.id);
+                        setPendingPaymentAfterQr(true);
+                        setQrUploadOpen(true);
+                        setCheckoutConfirmOpen(false);
+                      } else {
+                        setCheckoutConfirmOpen(false);
+                        await proceedPaidPlanCheckout(checkoutPlan);
+                      }
                     }}
                     disabled={
                       activatingPlanId === checkoutPlan.id ||
@@ -2376,7 +2471,13 @@ export default function SubscriptionPage() {
                     }
                     className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-2.5 text-[13px] font-semibold text-white shadow-md transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Continue
+                    {activatingPlanId === checkoutPlan.id ? (
+                      <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                    ) : isPgUpgradeInquiry ? (
+                      "Save & Continue"
+                    ) : (
+                      "Continue"
+                    )}
                   </button>
                 </div>
                 <p className="mt-2 text-center text-[11px] text-slate-500">
@@ -2459,9 +2560,27 @@ export default function SubscriptionPage() {
                     type="button"
                     onClick={async () => {
                       if (!storeId || !checkoutPlan) return;
+                      
+                      const addons = checkoutAddonPayload(checkoutPlan.id);
+                      const isUpgradingToPgOnly = Boolean(addons.paymentGateway) && !hydratedStoreAddons.paymentGateway;
+                      const isUpgradingToQrOnly = Boolean(addons.qrCode) && !hydratedStoreAddons.qrCode;
+
+                      if (isUpgradingToPgOnly || isUpgradingToQrOnly) {
+                        setIsPgUpgradeInquiry(isUpgradingToPgOnly);
+                        setUpgradeConfirmOpen(false);
+                        
+                        if (isUpgradingToQrOnly) {
+                          setQrUploadPlanId(checkoutPlan.id);
+                          setPendingPaymentAfterQr(false);
+                          setQrUploadOpen(true);
+                        } else {
+                          setCheckoutConfirmOpen(true);
+                        }
+                        return;
+                      }
+
                       setActivatingPlanId(checkoutPlan.id);
                       try {
-                        const addons = checkoutAddonPayload(checkoutPlan.id);
                         await requestUpgradeInquiry(storeId, {
                           planId: checkoutPlan.id,
                           addons,
@@ -2708,7 +2827,18 @@ export default function SubscriptionPage() {
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button
                     type="button"
-                    onClick={closeQrUpload}
+                    onClick={() => {
+                      if (pendingPaymentAfterQr && checkoutPlan) {
+                        const planToPay = checkoutPlan;
+                        setQrUploadOpen(false);
+                        setPendingPaymentAfterQr(false);
+                        setTimeout(() => {
+                          void proceedPaidPlanCheckout(planToPay);
+                        }, 100);
+                      } else {
+                        closeQrUpload();
+                      }
+                    }}
                     className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto sm:px-5"
                   >
                     Not now
@@ -2724,18 +2854,26 @@ export default function SubscriptionPage() {
                       setQrUploading(true);
                       setQrUploadError(null);
                       try {
-                        // Backend requires `subscription_addons` selection before allowing QR save.
-                        // In this flow, user toggles the add-on before checkout, so persist it first.
-                        await saveStoreSubscriptionAddons(storeId, {
-                          ...checkoutAddonPayload(qrUploadPlanId),
-                          qrCode: true,
-                        });
+                        // We do NOT save subscription addons here anymore. 
+                        // They will be enabled by the backend upon successful Razorpay payment verification.
                         await updateStorePaymentIntegration(storeId, {
                           payment_qr_base64: qrUploadBase64,
                           payment_qr_mime: qrUploadMime ?? undefined,
                         });
                         setQrUploadToast("QR code saved.");
-                        closeQrUpload();
+
+                        if (pendingPaymentAfterQr && checkoutPlan) {
+                          // Continue with payment flow
+                          const planToPay = checkoutPlan;
+                          setQrUploadOpen(false);
+                          setPendingPaymentAfterQr(false);
+                          // Give a tiny delay for modal transitions
+                          setTimeout(() => {
+                            void proceedPaidPlanCheckout(planToPay);
+                          }, 100);
+                        } else {
+                          closeQrUpload();
+                        }
                       } catch (e) {
                         setQrUploadError(
                           isApiError(e)

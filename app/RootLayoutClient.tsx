@@ -220,7 +220,7 @@ export default function RootLayoutClient({
                 </div>
               )}
               {!hideBottomNav && <MobileBottomNav />}
-              {!isDashboard && <FloatingHelpButton />}
+              <FloatingHelpButton />
             </SearchProvider>
           </LocationProvider>
         </StoreProvider>

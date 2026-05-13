@@ -219,28 +219,6 @@ export default function ProductsManager({ defaultShowForm = false }: ProductsMan
   const [serviceFormError, setServiceFormError] = useState<string | null>(null);
   const [serviceFormSubmitting, setServiceFormSubmitting] = useState(false);
 
-  const [storeMenuOpen, setStoreMenuOpen] = useState(false);
-  const storeMenuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!storeMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node)) return;
-      if (storeMenuRef.current && !storeMenuRef.current.contains(t)) {
-        setStoreMenuOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setStoreMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [storeMenuOpen]);
   const [serviceImagePreview, setServiceImagePreview] = useState<string | null>(null);
   const [serviceImageError, setServiceImageError] = useState<string | null>(null);
   const serviceImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -470,12 +448,16 @@ export default function ProductsManager({ defaultShowForm = false }: ProductsMan
       setShowAddServiceForm(false);
       setShowAddForm(true);
       setFormError(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     setShowAddServiceForm(false);
     setShowAddForm((prev) => {
       const next = !prev;
-      if (next) setFormError(null);
+      if (next) {
+        setFormError(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       return next;
     });
   };
@@ -1325,82 +1307,13 @@ export default function ProductsManager({ defaultShowForm = false }: ProductsMan
               {services.length} services
             </span>
             {hasStore && user?.storeSlug ? (
-              <div ref={storeMenuRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setStoreMenuOpen((p) => !p)}
-                  className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                  aria-haspopup="menu"
-                  aria-expanded={storeMenuOpen}
-                  aria-label="Open store menu"
-                >
-                  <ChevronDown className={`h-4 w-4 transition ${storeMenuOpen ? 'rotate-180' : ''}`} aria-hidden />
-                </button>
-                {storeMenuOpen ? (
-                  <div
-                    role="menu"
-                    className="absolute right-0 z-40 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setStoreMenuOpen(false);
-                        router.push('/dashboard');
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      Dashboard
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setStoreMenuOpen(false);
-                        router.push('/dashboard/notifications');
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      Notifications
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setStoreMenuOpen(false);
-                        setShowAddForm(true);
-                        setShowAddServiceForm(false);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      Add products
-                    </button>
-                    <Link
-                      role="menuitem"
-                      href={`/store/${encodeURIComponent(user.storeSlug)}`}
-                      prefetch
-                      onClick={() => setStoreMenuOpen(false)}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      View store
-                      <ArrowRight className="ml-auto h-3.5 w-3.5 text-slate-400" aria-hidden />
-                    </Link>
-                    <div className="my-1 border-t border-slate-200" />
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setStoreMenuOpen(false);
-                        logout({ redirectTo: '/auth' });
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                ) : null}
-              </div>
+              <Link
+                href={`/store/${encodeURIComponent(user.storeSlug)}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              >
+                View Store
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
             ) : null}
           </div>
         </div>

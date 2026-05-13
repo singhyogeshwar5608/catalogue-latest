@@ -249,9 +249,10 @@ class StoreController extends Controller
             ])
                 ->withCount([
                     'subscriptionInquiries as pending_subscription_inquiries_count' => function ($q) {
-                        $q->whereIn('status', ['created', 'paid']);
+                        $q->whereIn('status', ['created', 'paid', 'activated']);
                     },
                 ])
+                ->withMax('subscriptionInquiries as latest_inquiry_id', 'id')
                 ->orderByDesc('created_at')
                 ->get();
         } else {
@@ -280,6 +281,7 @@ class StoreController extends Controller
                     'has_pending_subscription_inquiry',
                     (int) ($s->pending_subscription_inquiries_count ?? 0) > 0
                 );
+                $s->setAttribute('latest_inquiry_id', $s->latest_inquiry_id);
             }
         }
 
@@ -552,7 +554,7 @@ class StoreController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'current_password' => 'required|string',
+            'current_password' => 'sometimes|string',
             'name' => 'sometimes|required|string|max:255',
             'slug' => 'sometimes|nullable|string|max:255|unique:stores,slug,'.$store->id,
             'category_id' => 'sometimes|required|exists:categories,id',
@@ -588,12 +590,14 @@ class StoreController extends Controller
 
         $data = $validator->validated();
 
-        if (! Hash::check($data['current_password'], $user->getAuthPassword())) {
-            return $this->errorResponse('Current password is incorrect.', 422, [
-                'current_password' => ['The current password is incorrect.'],
-            ]);
+        if (array_key_exists('current_password', $data)) {
+            if (! Hash::check($data['current_password'], $user->getAuthPassword())) {
+                return $this->errorResponse('Current password is incorrect.', 422, [
+                    'current_password' => ['The current password is incorrect.'],
+                ]);
+            }
+            unset($data['current_password']);
         }
-        unset($data['current_password']);
 
         $lifetimeProvided = array_key_exists('lifetime_access', $data)
             || array_key_exists('is_lifetime', $data);
@@ -762,6 +766,8 @@ class StoreController extends Controller
 
         try {
             DB::transaction(function () use ($store, $id) {
+                $ownerId = $store->user_id;
+
                 // Prefer Eloquent so events/cascades run as expected.
                 $store->delete();
 
@@ -774,6 +780,14 @@ class StoreController extends Controller
                 // If it still exists, something is seriously wrong (wrong DB, permissions, etc.).
                 if (Store::query()->whereKey($id)->exists()) {
                     throw new \RuntimeException('Store delete did not persist. Check DB connection / permissions / foreign keys.');
+                }
+
+                // Also delete the associated user if they are not a super admin
+                if ($ownerId) {
+                    $owner = \App\Models\User::find($ownerId);
+                    if ($owner && $owner->role !== 'super_admin') {
+                        $owner->delete();
+                    }
                 }
             }, 3);
 

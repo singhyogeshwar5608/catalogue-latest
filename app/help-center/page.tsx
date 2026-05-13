@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Clock3, Facebook, Instagram, Linkedin, Mail, MapPin, Phone, Send, Youtube } from 'lucide-react';
 
@@ -8,6 +9,22 @@ export default function HelpCenterPage() {
 }
 
 function HelpCenterContactRedesign() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: '',
+  });
+
+  const handleWhatsAppRedirect = (e: React.FormEvent) => {
+    e.preventDefault();
+    const { name, email, phone, subject, message } = formData;
+    const text = `*New Help Center Message*\n\n*Name:* ${name}\n*Email:* ${email}\n*Phone:* ${phone}\n*Subject:* ${subject || 'General Enquiry'}\n\n*Message:*\n${message}`;
+    const encodedText = encodeURIComponent(text);
+    window.open(`https://wa.me/917015150181?text=${encodedText}`, '_blank');
+  };
+
   return (
     <div className="min-h-screen bg-[#f0f4ff]">
       <section className="relative overflow-hidden">
@@ -95,23 +112,29 @@ function HelpCenterContactRedesign() {
             <h2 className="text-xl font-semibold tracking-[-0.03em] text-slate-950">Get in Touch</h2>
             <p className="mt-1 text-sm text-slate-500">Fill the form and we&apos;ll get back soon.</p>
 
-            <form className="mt-6 grid gap-4" onSubmit={(e) => e.preventDefault()}>
+            <form className="mt-6 grid gap-4" onSubmit={handleWhatsAppRedirect}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-xs font-semibold text-slate-700">Full Name</label>
                   <input
+                    required
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
                     placeholder="Enter your full name"
                     autoComplete="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-700">Email Address</label>
                   <input
+                    required
                     type="email"
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
                     placeholder="Enter your email"
                     autoComplete="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
               </div>
@@ -120,14 +143,22 @@ function HelpCenterContactRedesign() {
                 <div>
                   <label className="text-xs font-semibold text-slate-700">Phone Number</label>
                   <input
+                    required
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
                     placeholder="Enter your phone number"
                     autoComplete="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-700">Subject</label>
-                  <select className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15">
+                  <select
+                    required
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  >
                     <option value="">Select subject</option>
                     <option value="store">Store setup</option>
                     <option value="billing">Billing / subscription</option>
@@ -140,8 +171,11 @@ function HelpCenterContactRedesign() {
               <div>
                 <label className="text-xs font-semibold text-slate-700">Message</label>
                 <textarea
+                  required
                   className="mt-1 min-h-[140px] w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#3B6DD4] focus:ring-2 focus:ring-[#3B6DD4]/15"
                   placeholder="Write your message here..."
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 />
               </div>
 
@@ -151,10 +185,10 @@ function HelpCenterContactRedesign() {
                   className="inline-flex items-center gap-2 rounded-xl bg-[#3B6DD4] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F58B3]"
                 >
                   <Send className="h-4 w-4" />
-                  Send Message
+                  Send via WhatsApp
                 </button>
                 <p className="text-xs text-slate-500">
-                  This is a UI redesign. Hook submission to backend/API when ready.
+                  Form details will be sent to our support WhatsApp number.
                 </p>
               </div>
             </form>
@@ -172,7 +206,7 @@ function HelpCenterContactRedesign() {
                     <p className="text-xs font-semibold text-slate-900">Company Address</p>
                     <p className="mt-0.5 text-sm font-semibold text-slate-800">Registered Office</p>
                     <p className="mt-0.5 text-sm text-slate-600">
-                      M/s Larawans, Village Manoharpur, District Jind, Haryana - 126102
+                      M/s Larawans, District Jind, Haryana - 126102
                     </p>
                   </div>
                 </div>

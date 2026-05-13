@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
-import { getStoreBySlugFromApi, getProductsByStore, getStoreReviews } from '@/src/lib/api';
+import { getStoreBySlugFromApi, getProductsByStore, getStoreReviews, updateStore } from '@/src/lib/api';
 import { getCategoryById } from '@/data/categories';
 import StoreView from '@/components/store/StoreView';
 import PublicStorefrontAccessGate from '@/components/PublicStorefrontAccessGate';
@@ -75,6 +75,7 @@ export default function AutoCatalogPage({ params }: { params: ParamsPromise }) {
         const autoStore: Store = {
           id: `auto-${username}`,
           username,
+          slug: `${username}`,
           name: formatStoreName(regData?.userData?.businessName || 'My New Store'),
           logo: regData?.userData?.logo || assets.logo,
           banner: regData?.userData?.banner || assets.banner,
@@ -158,6 +159,29 @@ export default function AutoCatalogPage({ params }: { params: ParamsPromise }) {
   const productsToDisplay = products;
   const reviewsToDisplay = reviews;
 
+  const handleSocialLinkChange = async (platform: string, url: string) => {
+    if (!storeData?.id) return;
+    try {
+      const fieldMap: Record<string, string> = {
+        facebook: 'facebook_url',
+        instagram: 'instagram_url',
+        youtube: 'youtube_url',
+        linkedin: 'linkedin_url',
+      };
+      const field = fieldMap[platform];
+      if (!field) return;
+
+      const { store: updatedStore } = await updateStore({
+        id: storeData.id,
+        [field]: url,
+      });
+      setStoreData(updatedStore);
+    } catch (error) {
+      console.error('Failed to update social link:', error);
+      alert('Failed to update social link. Please try again.');
+    }
+  };
+
   return (
     <div className="pb-12">
       <PublicStorefrontAccessGate store={storeData} user={user ?? null}>
@@ -167,6 +191,7 @@ export default function AutoCatalogPage({ params }: { params: ParamsPromise }) {
           services={[]}
           reviews={reviewsToDisplay}
           onStoreUpdated={(next) => setStoreData(next)}
+          onSocialLinkChange={handleSocialLinkChange}
         />
       </PublicStorefrontAccessGate>
     </div>

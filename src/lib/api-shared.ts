@@ -276,6 +276,7 @@ export const normalizeStore = (store: BackendStore): Store => {
     id: String(store.id),
     userId: store.user_id != null ? String(store.user_id) : undefined,
     username,
+    slug: store.slug,
     name: formatStoreName(store.name),
     logo: resolvedLogo || fallbackLogo,
     banner,

@@ -98,13 +98,15 @@ function slidesFromCategories(categories: Category[]): HeroSlide[] {
 }
 
 export default function HeroBanner() {
-  const [slides, setSlides] = useState<HeroSlide[]>(FALLBACK_SLIDES);
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        setLoading(true);
         const dto = await getHeroBannerSlides();
         if (cancelled) return;
         if (dto.length > 0) {
@@ -123,9 +125,15 @@ export default function HeroBanner() {
         const built = slidesFromCategories(categories);
         if (built.length > 0) {
           setSlides(built);
+        } else {
+          setSlides(FALLBACK_SLIDES);
         }
       } catch {
-        /* keep fallback */
+        setSlides(FALLBACK_SLIDES);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -148,6 +156,19 @@ export default function HeroBanner() {
     const interval = setInterval(tick, 4000);
     return () => clearInterval(interval);
   }, [len, tick]);
+
+  if (loading) {
+    return (
+      <section className="relative w-full bg-slate-900">
+        <div className="relative flex h-[360px] w-full items-center justify-center sm:h-[450px] lg:aspect-[10/3] lg:h-auto">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">Loading Marketplace</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <>

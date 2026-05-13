@@ -791,7 +791,7 @@ export default function HomePageClient({
                     Happy shoppers
                   </p>
                   <p className="bg-gradient-to-br from-white to-slate-200 bg-clip-text text-base font-semibold tabular-nums text-transparent sm:mt-1 sm:text-2xl">
-                    2,300+
+                    45,000+
                   </p>
                 </motion.div>
                 <motion.div
@@ -806,7 +806,7 @@ export default function HomePageClient({
                     Partner stores
                   </p>
                   <p className="bg-gradient-to-br from-white to-slate-200 bg-clip-text text-base font-semibold tabular-nums text-transparent sm:mt-1 sm:text-2xl">
-                    180
+                    18,500+
                   </p>
                 </motion.div>
                 <motion.div

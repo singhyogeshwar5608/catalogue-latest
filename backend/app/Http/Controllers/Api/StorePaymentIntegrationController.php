@@ -120,6 +120,13 @@ class StorePaymentIntegrationController extends Controller
             return null;
         }
 
+        // Merchants can ALWAYS update their integration details (like uploading a QR) 
+        // even if they haven't paid yet (e.g. during checkout flow).
+        // The UI hides the settings page from navigation until the add-on is officially active.
+        if ($request->isMethod('PUT') || $request->isMethod('POST')) {
+            return null;
+        }
+
         if (! $this->storeHasPaymentAddonSelection($store)) {
             return $this->errorResponse(
                 'Payment settings unlock after you enable payment add-ons.',
@@ -129,20 +136,7 @@ class StorePaymentIntegrationController extends Controller
 
         // If admin has manually enabled add-ons (or user selected them), allow GET access 
         // to see the current state (like QR code) even on free plans.
-        if ($request->isMethod('GET')) {
-            return null;
-        }
-
-        // Allow merchants to update their integration details if the add-on is enabled, 
-        // even if the paid period hasn't started or they are on a free plan (if admin allowed it).
-        if ($this->storeHasPaymentAddonSelection($store)) {
-            return null;
-        }
-
-        return $this->errorResponse(
-            'Payment settings unlock after you activate a paid subscription and enable payment add-ons.',
-            403
-        );
+        return null;
     }
 
     private function deletePaymentQrFile(?string $path): void

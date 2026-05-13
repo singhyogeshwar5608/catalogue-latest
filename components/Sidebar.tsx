@@ -160,8 +160,9 @@ export default function Sidebar() {
   const showPaymentsHub = storeCanAccessPaymentIntegrationHub(myStore);
 
   const menuItems = [
-    { href: '/', icon: Home, label: 'Home Page' },
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/dashboard/subscription', icon: CreditCard, label: 'Subscription' },
+    { href: '/', icon: Home, label: 'Home Page' },
     { href: '/dashboard/notifications', icon: Bell, label: 'Notifications' },
     ...(businessType === 'product' || businessType === 'hybrid'
       ? ([
@@ -173,7 +174,6 @@ export default function Sidebar() {
       ? [{ href: '/dashboard/services', icon: Briefcase, label: 'Services' }] 
       : []),
     // { href: '/dashboard/boost', icon: Zap, label: 'Boost Store' },
-    { href: '/dashboard/subscription', icon: CreditCard, label: 'Subscription' },
     ...(showPaymentsHub
       ? [{ href: '/dashboard/payment-integration', icon: Plug2, label: 'Payment settings' } as const]
       : []),

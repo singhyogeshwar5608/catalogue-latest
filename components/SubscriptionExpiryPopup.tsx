@@ -27,13 +27,19 @@ export default function SubscriptionExpiryPopup({ planName, daysRemaining, onClo
                 <h3 className="text-[15px] font-bold text-slate-900">
                   {isExpired ? 'Subscription Expired' : 'Subscription Expiring Soon'}
                 </h3>
-                <p className="mt-0.5 text-[11px] font-semibold text-red-600">
-                  {isExpired
-                    ? 'Your subscription has expired'
-                    : daysRemaining === 0
-                      ? 'Less than 1 day remaining'
-                      : `${daysRemaining} day${daysRemaining > 1 ? 's' : ''} remaining`}
-                </p>
+                <div className="mt-1 flex">
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-2 py-0.5 text-[10px] font-bold text-white shadow-md ring-1 ring-white/20 animate-pulse">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    {isExpired
+                      ? 'Subscription Expired'
+                      : daysRemaining === 0
+                        ? 'Less than 1 day remaining'
+                        : `${daysRemaining} day${daysRemaining > 1 ? 's' : ''} remaining`}
+                  </span>
+                </div>
               </div>
             </div>
             <button

@@ -12,7 +12,6 @@ export default function FloatingHelpButton() {
 
   const hide =
     !pathname ||
-    pathname.startsWith('/dashboard') ||
     pathname.startsWith('/admin') ||
     pathname === '/login' ||
     pathname === '/help-center';

@@ -20,18 +20,21 @@ export default function PwaStoreInstallButton() {
   const deferred = useRef<BeforeInstallPrompt | null>(null);
   const [show, setShow] = useState(false);
 
-  const isStorePath = Boolean(pathname && /^\/store\/[^/]+/.test(pathname));
   const isInstallPath = Boolean(
     pathname
-      && (isStorePath || /^\/dashboard(\/|$)/.test(pathname)),
+      && !pathname.startsWith('/admin')
+      && pathname !== '/login'
+      && pathname !== '/help-center'
   );
 
   useLayoutEffect(() => {
     ensureGlobalBeforeInstallListener();
     const sync = () => {
       const s = getStoredBip();
-      deferred.current = s;
-      setShow(Boolean(isInstallPath && s));
+      if (s) {
+        deferred.current = s;
+      }
+      setShow(Boolean(isInstallPath && (s || deferred.current)));
     };
     sync();
     window.addEventListener('larawans-pwa-bip', sync);
@@ -58,19 +61,20 @@ export default function PwaStoreInstallButton() {
     return null;
   }
 
-  /** Store pages: keep bottom-left so fixed “Share via WhatsApp” (bottom-right) is not covered. */
-  const positionClass = isStorePath
-    ? 'left-3 right-auto md:left-6 md:right-auto'
-    : 'right-3 md:right-6';
+  /** 
+   * Keep bottom-left on both mobile and desktop.
+   * Desktop: slightly higher (30px extra) to avoid hiding Sidebar Logout button.
+   */
+  const positionClass = 'left-3 right-auto md:left-6 md:right-auto';
 
   return (
     <div
-      className={`pointer-events-auto fixed bottom-[calc(88px+env(safe-area-inset-bottom,0px))] z-[60] md:bottom-6 ${positionClass}`}
+      className={`pointer-events-auto fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-[60] md:bottom-[84px] ${positionClass}`}
     >
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-800 shadow-lg ring-1 ring-slate-900/5 transition hover:border-primary/40 hover:text-primary md:text-sm"
+        className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-lg ring-1 ring-white/10 transition hover:bg-black md:text-sm"
       >
         <Download className="h-4 w-4" aria-hidden />
         Install app
